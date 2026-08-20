@@ -3,9 +3,6 @@ import { useParams, Link } from 'react-router-dom'
 import {
   listarEventosAtivos,
   listarHorarios,
-  emailValido,
-  enviarCodigoConfirmacao,
-  confirmarCodigo,
   criarAgendamento,
   meusAgendamentos,
   type Evento,
@@ -13,7 +10,7 @@ import {
   type Periodo,
 } from '../lib/bookingService'
 
-type Etapa = 'lista' | 'dados' | 'codigo' | 'sucesso'
+type Etapa = 'lista' | 'confirmar' | 'sucesso'
 
 const ROTULO_PERIODO: Record<Periodo, string> = {
   manha: 'Manhã',
@@ -35,10 +32,6 @@ export default function EventoPage() {
 
   const [horarioSelecionado, setHorarioSelecionado] = useState<Horario | null>(null)
   const [etapa, setEtapa] = useState<Etapa>('lista')
-  const [nome, setNome] = useState('')
-  const [matricula, setMatricula] = useState('')
-  const [email, setEmail] = useState('')
-  const [codigo, setCodigo] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
 
@@ -89,78 +82,35 @@ export default function EventoPage() {
     [horarios, periodoAtivo]
   )
 
-  function abrirReserva(horario: Horario) {
+  async function abrirReserva(horario: Horario) {
     if (horario.vagasLivres === 0) return
-    setHorarioSelecionado(horario)
-    setEtapa('dados')
     setErro(null)
+
+    const existentes = await meusAgendamentos()
+    if (existentes.length > 0) {
+      const continuar = window.confirm(
+        'Você já possui um agendamento neste evento. Como ainda há vagas, você pode reservar outro horário. Confirmar mesmo assim?'
+      )
+      if (!continuar) return
+    }
+
+    setHorarioSelecionado(horario)
+    setEtapa('confirmar')
   }
 
   function fecharFluxo() {
     setHorarioSelecionado(null)
     setEtapa('lista')
-    setNome('')
-    setMatricula('')
-    setEmail('')
-    setCodigo('')
     setErro(null)
   }
 
-  async function enviarDados(ev: React.FormEvent) {
-    ev.preventDefault()
-    setErro(null)
-
-    if (!nome.trim() || !matricula.trim()) {
-      setErro('Preencha nome e matrícula.')
-      return
-    }
-    if (!emailValido(email)) {
-      setErro('Use seu e-mail corporativo (@cbbasfaltos.com.br).')
-      return
-    }
-
-    setEnviando(true)
-    try {
-      await enviarCodigoConfirmacao(email)
-      setEtapa('codigo')
-    } catch (e) {
-      setErro('Não foi possível enviar o código. Confira o e-mail e tente novamente.')
-    } finally {
-      setEnviando(false)
-    }
-  }
-
-  async function confirmarReserva(ev: React.FormEvent) {
-    ev.preventDefault()
+  async function confirmarReserva() {
     if (!horarioSelecionado) return
     setErro(null)
-
-    if (!codigo.trim()) {
-      setErro('Digite o código recebido por e-mail.')
-      return
-    }
-
     setEnviando(true)
+
     try {
-      await confirmarCodigo(email, codigo)
-
-      const existentes = await meusAgendamentos()
-      if (existentes.length > 0) {
-        const continuar = window.confirm(
-          'Você já possui um agendamento neste evento. Como ainda há vagas, você pode reservar outro horário. Confirmar mesmo assim?'
-        )
-        if (!continuar) {
-          setEnviando(false)
-          return
-        }
-      }
-
-      const resultado = await criarAgendamento({
-        slotIds: horarioSelecionado.slotIdsLivres,
-        nome,
-        matricula,
-        email,
-      })
+      const resultado = await criarAgendamento(horarioSelecionado.slotIdsLivres)
 
       if (!resultado.ok) {
         if (resultado.motivo === 'sem_vaga') {
@@ -171,14 +121,11 @@ export default function EventoPage() {
         } else {
           setErro('Não foi possível confirmar o agendamento. Tente novamente.')
         }
-        setEnviando(false)
         return
       }
 
       setEtapa('sucesso')
       await carregar()
-    } catch (e) {
-      setErro('Código inválido ou expirado. Solicite um novo código.')
     } finally {
       setEnviando(false)
     }
@@ -241,59 +188,22 @@ export default function EventoPage() {
       {horarioSelecionado && etapa !== 'lista' && (
         <div className="modal-fundo" role="dialog" aria-modal="true">
           <div className="modal">
-            {etapa === 'dados' && (
-              <form onSubmit={enviarDados}>
-                <p className="passo">Passo 1 de 2 · Seus dados</p>
+            {etapa === 'confirmar' && (
+              <div>
                 <h2>Confirmar horário</h2>
-                <p className="resumo-horario">{formatarHora(horarioSelecionado.inicio)} — {new Date(evento.dataInicio + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
-                <label>
-                  Nome completo
-                  <input value={nome} onChange={(e) => setNome(e.target.value)} autoFocus />
-                </label>
-                <label>
-                  Matrícula
-                  <input value={matricula} onChange={(e) => setMatricula(e.target.value)} />
-                </label>
-                <label>
-                  E-mail corporativo
-                  <input
-                    type="email"
-                    placeholder="nome.sobrenome@cbbasfaltos.com.br"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </label>
+                <p className="resumo-horario">
+                  {formatarHora(horarioSelecionado.inicio)} — {new Date(evento.dataInicio + 'T00:00:00').toLocaleDateString('pt-BR')}
+                </p>
                 {erro && <p className="mensagem erro">{erro}</p>}
                 <div className="acoes-modal">
                   <button type="button" className="botao-texto" onClick={fecharFluxo} disabled={enviando}>
                     Cancelar
                   </button>
-                  <button type="submit" className="botao-primario" disabled={enviando}>
-                    {enviando ? 'Enviando…' : 'Enviar código de confirmação'}
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {etapa === 'codigo' && (
-              <form onSubmit={confirmarReserva}>
-                <p className="passo">Passo 2 de 2 · Código de confirmação</p>
-                <h2>Digite o código</h2>
-                <p>Enviamos um código de confirmação para {email}.</p>
-                <label>
-                  Código
-                  <input value={codigo} onChange={(e) => setCodigo(e.target.value)} autoFocus />
-                </label>
-                {erro && <p className="mensagem erro">{erro}</p>}
-                <div className="acoes-modal">
-                  <button type="button" className="botao-texto" onClick={fecharFluxo} disabled={enviando}>
-                    Cancelar
-                  </button>
-                  <button type="submit" className="botao-primario" disabled={enviando}>
+                  <button type="button" className="botao-primario" onClick={confirmarReserva} disabled={enviando}>
                     {enviando ? 'Confirmando…' : 'Confirmar agendamento'}
                   </button>
                 </div>
-              </form>
+              </div>
             )}
 
             {etapa === 'sucesso' && (

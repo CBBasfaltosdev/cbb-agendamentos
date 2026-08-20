@@ -123,13 +123,46 @@ export async function enviarCodigoConfirmacao(email: string): Promise<void> {
   if (error) throw error
 }
 
-export async function confirmarCodigo(email: string, codigo: string): Promise<void> {
+// Após confirmar o código, o nome/matrícula ficam salvos no perfil do colaborador
+// (user_metadata do Supabase Auth) — assim ele autentica uma vez só e reserva quantas
+// vezes quiser sem preencher os dados de novo.
+export async function confirmarCodigo(
+  email: string,
+  codigo: string,
+  dados: { nome: string; matricula: string }
+): Promise<void> {
   const { error } = await supabase.auth.verifyOtp({
     email: email.trim().toLowerCase(),
     token: codigo.trim(),
     type: 'email',
   })
   if (error) throw error
+
+  const { error: erroPerfil } = await supabase.auth.updateUser({
+    data: { nome: dados.nome.trim(), matricula: dados.matricula.trim() },
+  })
+  if (erroPerfil) throw erroPerfil
+}
+
+export type Colaborador = {
+  email: string
+  nome: string
+  matricula: string
+}
+
+export async function colaboradorAutenticado(): Promise<Colaborador | null> {
+  const { data } = await supabase.auth.getUser()
+  const user = data.user
+  if (!user || !user.email) return null
+  return {
+    email: user.email,
+    nome: (user.user_metadata?.nome as string) ?? '',
+    matricula: (user.user_metadata?.matricula as string) ?? '',
+  }
+}
+
+export async function sair(): Promise<void> {
+  await supabase.auth.signOut()
 }
 
 export async function meusAgendamentos(): Promise<MeuAgendamento[]> {
@@ -150,18 +183,19 @@ export async function meusAgendamentos(): Promise<MeuAgendamento[]> {
 
 // Recebe todos os slot_id livres naquele horário (um por profissional) e tenta reservar
 // o primeiro; se alguém reservou no meio do caminho (23505), tenta o próximo da lista.
-export async function criarAgendamento(params: {
+// Os dados do colaborador vêm da sessão autenticada, não são mais digitados a cada reserva.
+export async function criarAgendamento(
   slotIds: string[]
-  nome: string
-  matricula: string
-  email: string
-}): Promise<{ ok: true } | { ok: false; motivo: 'sem_vaga' | 'erro' }> {
-  for (const slotId of params.slotIds) {
+): Promise<{ ok: true } | { ok: false; motivo: 'sem_vaga' | 'nao_autenticado' | 'erro' }> {
+  const colaborador = await colaboradorAutenticado()
+  if (!colaborador) return { ok: false, motivo: 'nao_autenticado' }
+
+  for (const slotId of slotIds) {
     const { error } = await supabase.from('agendamentos').insert({
       slot_id: slotId,
-      colaborador_nome: params.nome.trim(),
-      colaborador_matricula: params.matricula.trim(),
-      colaborador_email: params.email.trim().toLowerCase(),
+      colaborador_nome: colaborador.nome,
+      colaborador_matricula: colaborador.matricula,
+      colaborador_email: colaborador.email,
     })
 
     if (!error) return { ok: true }

@@ -17,8 +17,44 @@
   border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
+  justify-content: space-between;
   height: 64px;
   padding: 0 var(--space-5);
+}
+
+.area-colaborador {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.nome-colaborador {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+  max-width: 40vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.botao-sair {
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.botao-sair:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-ink);
+  background: var(--color-surface-alt);
 }
 
 .logo-link {
