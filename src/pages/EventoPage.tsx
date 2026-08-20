@@ -2,17 +2,24 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   listarEventosAtivos,
-  listarSlots,
+  listarHorarios,
   emailValido,
   enviarCodigoConfirmacao,
   confirmarCodigo,
   criarAgendamento,
   meusAgendamentos,
   type Evento,
-  type SlotDisponivel,
+  type Horario,
+  type Periodo,
 } from '../lib/bookingService'
 
-type Etapa = 'grade' | 'dados' | 'codigo' | 'sucesso'
+type Etapa = 'lista' | 'dados' | 'codigo' | 'sucesso'
+
+const ROTULO_PERIODO: Record<Periodo, string> = {
+  manha: 'Manhã',
+  tarde: 'Tarde',
+  noite: 'Noite',
+}
 
 function formatarHora(hora: string) {
   return hora.slice(0, 5)
@@ -21,12 +28,13 @@ function formatarHora(hora: string) {
 export default function EventoPage() {
   const { slug } = useParams<{ slug: string }>()
   const [evento, setEvento] = useState<Evento | null>(null)
-  const [slots, setSlots] = useState<SlotDisponivel[]>([])
+  const [horarios, setHorarios] = useState<Horario[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erroCarregamento, setErroCarregamento] = useState<string | null>(null)
+  const [periodoAtivo, setPeriodoAtivo] = useState<Periodo | null>(null)
 
-  const [slotSelecionado, setSlotSelecionado] = useState<SlotDisponivel | null>(null)
-  const [etapa, setEtapa] = useState<Etapa>('grade')
+  const [horarioSelecionado, setHorarioSelecionado] = useState<Horario | null>(null)
+  const [etapa, setEtapa] = useState<Etapa>('lista')
   const [nome, setNome] = useState('')
   const [matricula, setMatricula] = useState('')
   const [email, setEmail] = useState('')
@@ -39,10 +47,10 @@ export default function EventoPage() {
     setCarregando(true)
     setErroCarregamento(null)
     try {
-      const [eventos, listaSlots] = await Promise.all([listarEventosAtivos(), listarSlots(slug)])
+      const [eventos, listaHorarios] = await Promise.all([listarEventosAtivos(), listarHorarios(slug)])
       const encontrado = eventos.find((e) => e.slug === slug) ?? null
       setEvento(encontrado)
-      setSlots(listaSlots)
+      setHorarios(listaHorarios)
     } catch (e) {
       setErroCarregamento('Não foi possível carregar os horários. Tente recarregar a página.')
     } finally {
@@ -55,26 +63,42 @@ export default function EventoPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug])
 
-  const recursos = useMemo(() => {
-    const nomes = Array.from(new Set(slots.map((s) => s.recursoNome)))
-    return nomes.sort()
-  }, [slots])
+  const periodos = useMemo(() => {
+    const totais = new Map<Periodo, number>()
+    for (const h of horarios) {
+      totais.set(h.periodo, (totais.get(h.periodo) ?? 0) + 1)
+    }
+    return (['manha', 'tarde', 'noite'] as Periodo[])
+      .filter((p) => totais.has(p))
+      .map((p) => ({ periodo: p, total: totais.get(p)! }))
+  }, [horarios])
 
-  const horarios = useMemo(() => {
-    const inicios = Array.from(new Set(slots.map((s) => s.inicio)))
-    return inicios.sort()
-  }, [slots])
+  useEffect(() => {
+    if (periodoAtivo || periodos.length === 0) return
+    const comMaisVagas = [...horarios]
+      .reduce<Record<string, number>>((acc, h) => {
+        acc[h.periodo] = (acc[h.periodo] ?? 0) + h.vagasLivres
+        return acc
+      }, {})
+    const melhor = periodos.reduce((a, b) => ((comMaisVagas[b.periodo] ?? 0) > (comMaisVagas[a.periodo] ?? 0) ? b : a))
+    setPeriodoAtivo(melhor.periodo)
+  }, [periodos, horarios, periodoAtivo])
 
-  function abrirReserva(slot: SlotDisponivel) {
-    if (slot.ocupado) return
-    setSlotSelecionado(slot)
+  const horariosDoPeriodo = useMemo(
+    () => horarios.filter((h) => h.periodo === periodoAtivo),
+    [horarios, periodoAtivo]
+  )
+
+  function abrirReserva(horario: Horario) {
+    if (horario.vagasLivres === 0) return
+    setHorarioSelecionado(horario)
     setEtapa('dados')
     setErro(null)
   }
 
   function fecharFluxo() {
-    setSlotSelecionado(null)
-    setEtapa('grade')
+    setHorarioSelecionado(null)
+    setEtapa('lista')
     setNome('')
     setMatricula('')
     setEmail('')
@@ -108,7 +132,7 @@ export default function EventoPage() {
 
   async function confirmarReserva(ev: React.FormEvent) {
     ev.preventDefault()
-    if (!slotSelecionado) return
+    if (!horarioSelecionado) return
     setErro(null)
 
     if (!codigo.trim()) {
@@ -132,18 +156,18 @@ export default function EventoPage() {
       }
 
       const resultado = await criarAgendamento({
-        slotId: slotSelecionado.slotId,
+        slotIds: horarioSelecionado.slotIdsLivres,
         nome,
         matricula,
         email,
       })
 
       if (!resultado.ok) {
-        if (resultado.motivo === 'slot_ocupado') {
-          setErro('Esse horário acabou de ser reservado por outra pessoa. Escolha outro horário.')
+        if (resultado.motivo === 'sem_vaga') {
+          setErro('Esse horário acabou de lotar. Escolha outro horário.')
           await carregar()
-          setEtapa('grade')
-          setSlotSelecionado(null)
+          setEtapa('lista')
+          setHorarioSelecionado(null)
         } else {
           setErro('Não foi possível confirmar o agendamento. Tente novamente.')
         }
@@ -171,51 +195,57 @@ export default function EventoPage() {
       {evento.descricao && <p className="descricao">{evento.descricao}</p>}
       <p className="data-evento">Dia {new Date(evento.dataInicio + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
 
-      <div className="grade-scroll">
-        <table className="grade-horarios">
-          <thead>
-            <tr>
-              <th>Horário</th>
-              {recursos.map((r) => (
-                <th key={r}>{r}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {horarios.map((hora) => (
-              <tr key={hora}>
-                <td className="coluna-hora">{formatarHora(hora)}</td>
-                {recursos.map((r) => {
-                  const slot = slots.find((s) => s.inicio === hora && s.recursoNome === r)
-                  if (!slot) return <td key={r}>—</td>
-                  return (
-                    <td key={r}>
-                      <button
-                        type="button"
-                        className={slot.ocupado ? 'vaga ocupada' : 'vaga livre'}
-                        disabled={slot.ocupado}
-                        onClick={() => abrirReserva(slot)}
-                      >
-                        {slot.ocupado ? 'Ocupado' : 'Reservar'}
-                      </button>
-                    </td>
-                  )
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="chips-periodo" role="tablist" aria-label="Período do dia">
+        {periodos.map(({ periodo, total }) => (
+          <button
+            key={periodo}
+            type="button"
+            role="tab"
+            aria-selected={periodoAtivo === periodo}
+            className={`chip ${periodoAtivo === periodo ? 'chip-ativo' : ''}`}
+            onClick={() => setPeriodoAtivo(periodo)}
+          >
+            {ROTULO_PERIODO[periodo]} <span className="chip-contagem">{total}</span>
+          </button>
+        ))}
       </div>
 
-      {slotSelecionado && etapa !== 'grade' && (
+      <p className="legenda">
+        <span className="marcador marcador-livre" /> livre &nbsp;&nbsp;
+        <span className="marcador marcador-indisponivel" /> indisponível
+      </p>
+
+      <ul className="lista-horarios">
+        {horariosDoPeriodo.map((h) => {
+          const indisponivel = h.vagasLivres === 0
+          return (
+            <li key={h.inicio}>
+              <button
+                type="button"
+                className={`linha-horario ${indisponivel ? 'indisponivel' : ''}`}
+                disabled={indisponivel}
+                onClick={() => abrirReserva(h)}
+                aria-disabled={indisponivel}
+              >
+                <span className="hora">{formatarHora(h.inicio)}</span>
+                <span className="status-horario">
+                  {indisponivel ? 'Indisponível' : `${h.vagasLivres} ${h.vagasLivres === 1 ? 'vaga' : 'vagas'}`}
+                </span>
+                {!indisponivel && <span className="acao-reservar">Reservar</span>}
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+
+      {horarioSelecionado && etapa !== 'lista' && (
         <div className="modal-fundo" role="dialog" aria-modal="true">
           <div className="modal">
             {etapa === 'dados' && (
               <form onSubmit={enviarDados}>
+                <p className="passo">Passo 1 de 2 · Seus dados</p>
                 <h2>Confirmar horário</h2>
-                <p>
-                  {slotSelecionado.recursoNome} às {formatarHora(slotSelecionado.inicio)}
-                </p>
+                <p className="resumo-horario">{formatarHora(horarioSelecionado.inicio)} — {new Date(evento.dataInicio + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
                 <label>
                   Nome completo
                   <input value={nome} onChange={(e) => setNome(e.target.value)} autoFocus />
@@ -235,10 +265,10 @@ export default function EventoPage() {
                 </label>
                 {erro && <p className="mensagem erro">{erro}</p>}
                 <div className="acoes-modal">
-                  <button type="button" onClick={fecharFluxo} disabled={enviando}>
+                  <button type="button" className="botao-texto" onClick={fecharFluxo} disabled={enviando}>
                     Cancelar
                   </button>
-                  <button type="submit" disabled={enviando}>
+                  <button type="submit" className="botao-primario" disabled={enviando}>
                     {enviando ? 'Enviando…' : 'Enviar código de confirmação'}
                   </button>
                 </div>
@@ -247,6 +277,7 @@ export default function EventoPage() {
 
             {etapa === 'codigo' && (
               <form onSubmit={confirmarReserva}>
+                <p className="passo">Passo 2 de 2 · Código de confirmação</p>
                 <h2>Digite o código</h2>
                 <p>Enviamos um código de confirmação para {email}.</p>
                 <label>
@@ -255,10 +286,10 @@ export default function EventoPage() {
                 </label>
                 {erro && <p className="mensagem erro">{erro}</p>}
                 <div className="acoes-modal">
-                  <button type="button" onClick={fecharFluxo} disabled={enviando}>
+                  <button type="button" className="botao-texto" onClick={fecharFluxo} disabled={enviando}>
                     Cancelar
                   </button>
-                  <button type="submit" disabled={enviando}>
+                  <button type="submit" className="botao-primario" disabled={enviando}>
                     {enviando ? 'Confirmando…' : 'Confirmar agendamento'}
                   </button>
                 </div>
@@ -267,13 +298,18 @@ export default function EventoPage() {
 
             {etapa === 'sucesso' && (
               <div>
-                <h2>Agendamento confirmado ✅</h2>
-                <p>
-                  {slotSelecionado.recursoNome} às {formatarHora(slotSelecionado.inicio)}, dia{' '}
-                  {new Date(evento.dataInicio + 'T00:00:00').toLocaleDateString('pt-BR')}.
+                <div className="icone-sucesso" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+                <h2>Agendamento confirmado</h2>
+                <p className="resumo-horario">
+                  {formatarHora(horarioSelecionado.inicio)}, dia{' '}
+                  {new Date(evento.dataInicio + 'T00:00:00').toLocaleDateString('pt-BR')}
                 </p>
                 <div className="acoes-modal">
-                  <button type="button" onClick={fecharFluxo}>
+                  <button type="button" className="botao-primario" onClick={fecharFluxo}>
                     Fechar
                   </button>
                 </div>

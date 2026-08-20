@@ -1,187 +1,346 @@
 .pagina-home,
 .pagina-evento {
-  max-width: 900px;
+  max-width: 720px;
   margin: 0 auto;
-  padding: 32px 20px 64px;
+  padding: var(--space-6) var(--space-5) var(--space-8);
   text-align: left;
 }
 
 .subtitulo {
-  color: var(--text);
-  margin-bottom: 24px;
+  color: var(--color-text-muted);
+  margin-top: var(--space-2);
+  margin-bottom: var(--space-5);
 }
 
 .voltar {
-  color: var(--accent);
+  display: inline-block;
+  color: var(--color-link);
   text-decoration: none;
-  font-size: 14px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: var(--space-4);
 }
 
 .mensagem {
-  padding: 24px 0;
+  padding: var(--space-6) var(--space-5);
+  color: var(--color-text-muted);
 }
 
 .mensagem.erro {
-  color: #c0392b;
+  color: var(--color-error);
 }
+
+/* ===== Home: lista de eventos ===== */
 
 .lista-eventos {
   display: grid;
-  gap: 16px;
-  margin-top: 16px;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
 }
 
 .card-evento {
   display: block;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
   text-decoration: none;
   color: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .card-evento:hover {
-  border-color: var(--accent-border);
-  background: var(--accent-bg);
+  border-color: var(--color-primary);
+  background: var(--color-primary-subtle);
 }
 
 .card-evento h2 {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
+}
+
+.card-evento p {
+  color: var(--color-text);
 }
 
 .data-card {
   display: inline-block;
-  margin-top: 12px;
-  font-size: 14px;
-  color: var(--text);
+  margin-top: var(--space-3);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted);
 }
 
+/* ===== Evento: cabeçalho da página ===== */
+
 .descricao {
-  margin: 8px 0;
+  margin: var(--space-2) 0;
+  color: var(--color-text);
 }
 
 .data-evento {
   font-weight: 600;
-  margin-bottom: 24px;
+  color: var(--color-ink);
+  margin-bottom: var(--space-5);
 }
 
-.grade-scroll {
-  overflow-x: auto;
-  border: 1px solid var(--border);
-  border-radius: 10px;
+/* ===== Chips de período ===== */
+
+.chips-periodo {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
 }
 
-.grade-horarios {
-  border-collapse: collapse;
-  width: 100%;
-  min-width: 480px;
-}
-
-.grade-horarios th,
-.grade-horarios td {
-  border-bottom: 1px solid var(--border);
-  padding: 8px 12px;
-  text-align: center;
-  font-size: 14px;
-}
-
-.grade-horarios th {
-  background: var(--code-bg);
-  position: sticky;
-  top: 0;
-}
-
-.coluna-hora {
+.chip {
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  border-radius: 999px;
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.875rem;
   font-weight: 600;
-  white-space: nowrap;
-}
-
-.vaga {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 10px;
-  font: inherit;
+  color: var(--color-text);
   cursor: pointer;
-  background: var(--bg);
-  color: var(--text-h);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
-.vaga.livre:hover {
-  border-color: var(--accent-border);
-  background: var(--accent-bg);
+.chip-ativo {
+  border-color: var(--color-primary);
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
 }
 
-.vaga.ocupada {
+.chip-contagem {
+  font-weight: 500;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+.chip-ativo .chip-contagem {
+  color: var(--color-primary);
+}
+
+/* ===== Legenda ===== */
+
+.legenda {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+  display: flex;
+  align-items: center;
+}
+
+.marcador {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: var(--space-1);
+}
+
+.marcador-livre {
+  background: var(--color-primary);
+}
+
+.marcador-indisponivel {
+  background: var(--color-disabled-text);
+}
+
+/* ===== Lista de horários ===== */
+
+.lista-horarios {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.lista-horarios li + li {
+  border-top: 1px solid var(--color-border);
+}
+
+.linha-horario {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.linha-horario:hover:not(.indisponivel) {
+  background: var(--color-primary-subtle);
+}
+
+.linha-horario.indisponivel {
   cursor: not-allowed;
-  opacity: 0.5;
+  background: var(--color-disabled-bg);
 }
+
+.linha-horario .hora {
+  font-weight: 600;
+  color: var(--color-ink);
+  min-width: 56px;
+}
+
+.linha-horario .status-horario {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  flex: 1;
+}
+
+.linha-horario.indisponivel .status-horario {
+  color: var(--color-disabled-text);
+}
+
+.linha-horario .acao-reservar {
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+/* ===== Modal ===== */
 
 .modal-fundo {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(55, 52, 53, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: var(--space-4);
   z-index: 10;
 }
 
 .modal {
-  background: var(--bg);
-  border-radius: 12px;
-  padding: 28px;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
   width: 100%;
-  max-width: 420px;
-  box-shadow: var(--shadow);
+  max-width: 440px;
+  box-shadow: var(--shadow-modal);
   text-align: left;
 }
 
+.passo {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+}
+
 .modal h2 {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
+}
+
+.resumo-horario {
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
 }
 
 .modal label {
   display: block;
-  margin-top: 14px;
-  font-size: 14px;
+  margin-top: var(--space-4);
+  font-size: 0.875rem;
   font-weight: 600;
+  color: var(--color-ink);
 }
 
 .modal input {
   display: block;
   width: 100%;
-  margin-top: 6px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  min-height: 44px;
+  margin-top: var(--space-2);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
   font: inherit;
   box-sizing: border-box;
+}
+
+.modal input:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.icone-sucesso {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-4);
 }
 
 .acoes-modal {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 22px;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
 }
 
-.acoes-modal button {
-  padding: 10px 16px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--bg);
+.botao-primario,
+.botao-texto {
+  min-height: 44px;
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-sm);
   font: inherit;
+  font-weight: 600;
   cursor: pointer;
 }
 
-.acoes-modal button[type='submit'] {
-  background: var(--accent);
-  border-color: var(--accent);
+.botao-primario {
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
   color: #fff;
 }
 
-.acoes-modal button:disabled {
+.botao-primario:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.botao-texto {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  padding-inline: var(--space-2);
+}
+
+.botao-texto:hover:not(:disabled) {
+  color: var(--color-ink);
+}
+
+.botao-primario:disabled,
+.botao-texto:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+@media (max-width: 600px) {
+  .modal-fundo {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal {
+    max-width: none;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
 }
