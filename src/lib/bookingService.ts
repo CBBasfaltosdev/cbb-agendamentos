@@ -115,33 +115,47 @@ export function emailValido(email: string): boolean {
   return normalizado.endsWith(DOMINIO_CORPORATIVO) && normalizado.length > DOMINIO_CORPORATIVO.length
 }
 
-export async function enviarCodigoConfirmacao(email: string): Promise<void> {
+// O plano gratuito do Supabase não permite personalizar o e-mail para mostrar um código —
+// só o link padrão "Confirm email address" funciona sem custo. Por isso o login é por link:
+// o colaborador clica no e-mail e volta autenticado, em vez de digitar um código.
+const SITE_URL = 'https://devcbbasfaltos.github.io/cbb-agendamentos/'
+const CHAVE_CADASTRO_PENDENTE = 'cbb_cadastro_pendente'
+
+export async function iniciarLogin(dados: { nome: string; matricula: string; email: string }): Promise<void> {
+  sessionStorage.setItem(
+    CHAVE_CADASTRO_PENDENTE,
+    JSON.stringify({ nome: dados.nome.trim(), matricula: dados.matricula.trim() })
+  )
+
   const { error } = await supabase.auth.signInWithOtp({
-    email: email.trim().toLowerCase(),
-    options: { shouldCreateUser: true },
+    email: dados.email.trim().toLowerCase(),
+    options: { shouldCreateUser: true, emailRedirectTo: SITE_URL },
   })
-  if (error) throw error
+  if (error) {
+    sessionStorage.removeItem(CHAVE_CADASTRO_PENDENTE)
+    throw error
+  }
 }
 
-// Após confirmar o código, o nome/matrícula ficam salvos no perfil do colaborador
-// (user_metadata do Supabase Auth) — assim ele autentica uma vez só e reserva quantas
-// vezes quiser sem preencher os dados de novo.
-export async function confirmarCodigo(
-  email: string,
-  codigo: string,
-  dados: { nome: string; matricula: string }
-): Promise<void> {
-  const { error } = await supabase.auth.verifyOtp({
-    email: email.trim().toLowerCase(),
-    token: codigo.trim(),
-    type: 'email',
-  })
-  if (error) throw error
+// Chamado assim que a sessão é detectada (depois do clique no link). Se o cadastro pendente
+// estiver salvo neste mesmo navegador, aplica nome/matrícula automaticamente. Se o link foi
+// aberto em outro aparelho/navegador, não há nada salvo — a tela de cadastro pede de novo.
+export async function aplicarCadastroPendente(): Promise<void> {
+  const bruto = sessionStorage.getItem(CHAVE_CADASTRO_PENDENTE)
+  if (!bruto) return
 
-  const { error: erroPerfil } = await supabase.auth.updateUser({
+  sessionStorage.removeItem(CHAVE_CADASTRO_PENDENTE)
+  const dados = JSON.parse(bruto) as { nome: string; matricula: string }
+  if (!dados.nome || !dados.matricula) return
+
+  await supabase.auth.updateUser({ data: dados })
+}
+
+export async function salvarCadastro(dados: { nome: string; matricula: string }): Promise<void> {
+  const { error } = await supabase.auth.updateUser({
     data: { nome: dados.nome.trim(), matricula: dados.matricula.trim() },
   })
-  if (erroPerfil) throw erroPerfil
+  if (error) throw error
 }
 
 export type Colaborador = {

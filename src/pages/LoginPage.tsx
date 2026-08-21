@@ -1,19 +1,16 @@
 import { useState } from 'react'
-import { emailValido, enviarCodigoConfirmacao, confirmarCodigo } from '../lib/bookingService'
+import { emailValido, iniciarLogin } from '../lib/bookingService'
 import logo from '../assets/logo-cbb.png'
 
-type Etapa = 'dados' | 'codigo'
-
-export default function LoginPage({ onAutenticado }: { onAutenticado: () => void }) {
-  const [etapa, setEtapa] = useState<Etapa>('dados')
+export default function LoginPage() {
   const [nome, setNome] = useState('')
   const [matricula, setMatricula] = useState('')
   const [email, setEmail] = useState('')
-  const [codigo, setCodigo] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
+  const [linkEnviado, setLinkEnviado] = useState(false)
 
-  async function enviarDados(ev: React.FormEvent) {
+  async function enviar(ev: React.FormEvent) {
     ev.preventDefault()
     setErro(null)
 
@@ -28,30 +25,10 @@ export default function LoginPage({ onAutenticado }: { onAutenticado: () => void
 
     setEnviando(true)
     try {
-      await enviarCodigoConfirmacao(email)
-      setEtapa('codigo')
+      await iniciarLogin({ nome, matricula, email })
+      setLinkEnviado(true)
     } catch (e) {
-      setErro('Não foi possível enviar o código. Confira o e-mail e tente novamente.')
-    } finally {
-      setEnviando(false)
-    }
-  }
-
-  async function confirmar(ev: React.FormEvent) {
-    ev.preventDefault()
-    setErro(null)
-
-    if (!codigo.trim()) {
-      setErro('Digite o código recebido por e-mail.')
-      return
-    }
-
-    setEnviando(true)
-    try {
-      await confirmarCodigo(email, codigo, { nome, matricula })
-      onAutenticado()
-    } catch (e) {
-      setErro('Código inválido ou expirado. Solicite um novo código.')
+      setErro('Não foi possível enviar o e-mail de confirmação. Tente novamente.')
     } finally {
       setEnviando(false)
     }
@@ -62,9 +39,8 @@ export default function LoginPage({ onAutenticado }: { onAutenticado: () => void
       <div className="cartao-login">
         <img src={logo} alt="CBB Asfaltos" className="logo-login" />
 
-        {etapa === 'dados' && (
-          <form onSubmit={enviarDados}>
-            <p className="passo">Passo 1 de 2 · Identificação</p>
+        {!linkEnviado && (
+          <form onSubmit={enviar}>
             <h1>Entrar</h1>
             <p className="subtitulo">
               Use seu nome, matrícula e e-mail corporativo para acessar os agendamentos.
@@ -88,30 +64,27 @@ export default function LoginPage({ onAutenticado }: { onAutenticado: () => void
             </label>
             {erro && <p className="mensagem erro">{erro}</p>}
             <button type="submit" className="botao-primario botao-bloco" disabled={enviando}>
-              {enviando ? 'Enviando…' : 'Enviar código de confirmação'}
+              {enviando ? 'Enviando…' : 'Enviar link de acesso'}
             </button>
           </form>
         )}
 
-        {etapa === 'codigo' && (
-          <form onSubmit={confirmar}>
-            <p className="passo">Passo 2 de 2 · Código de confirmação</p>
-            <h1>Digite o código</h1>
-            <p className="subtitulo">Enviamos um código de confirmação para {email}.</p>
-            <label>
-              Código
-              <input value={codigo} onChange={(e) => setCodigo(e.target.value)} autoFocus />
-            </label>
-            {erro && <p className="mensagem erro">{erro}</p>}
-            <div className="acoes-login">
-              <button type="button" className="botao-texto" onClick={() => setEtapa('dados')} disabled={enviando}>
-                Voltar
+        {linkEnviado && (
+          <div>
+            <h1>Verifique seu e-mail</h1>
+            <p className="subtitulo">
+              Enviamos um link de acesso para <strong>{email}</strong>. Abra o e-mail e clique em
+              "Confirm email address" para entrar — você volta automaticamente para esta página,
+              já autenticado.
+            </p>
+            <p className="subtitulo" style={{ marginTop: 16 }}>
+              Não recebeu? Confira a caixa de spam ou{' '}
+              <button type="button" className="botao-texto" style={{ padding: 0 }} onClick={() => setLinkEnviado(false)}>
+                tente novamente
               </button>
-              <button type="submit" className="botao-primario" disabled={enviando}>
-                {enviando ? 'Confirmando…' : 'Entrar'}
-              </button>
-            </div>
-          </form>
+              .
+            </p>
+          </div>
         )}
       </div>
     </div>

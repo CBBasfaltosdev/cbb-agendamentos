@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react'
-import { HashRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Header from './components/Header'
 import HomePage from './pages/HomePage'
 import EventoPage from './pages/EventoPage'
 import LoginPage from './pages/LoginPage'
+import CompletarCadastroPage from './pages/CompletarCadastroPage'
 import { supabase } from './lib/supabaseClient'
-import { colaboradorAutenticado, type Colaborador } from './lib/bookingService'
+import { colaboradorAutenticado, aplicarCadastroPendente, type Colaborador } from './lib/bookingService'
 import './App.css'
 
 function App() {
   const [colaborador, setColaborador] = useState<Colaborador | null | undefined>(undefined)
 
   async function atualizarSessao() {
+    await aplicarCadastroPendente()
     setColaborador(await colaboradorAutenticado())
   }
 
@@ -28,11 +30,15 @@ function App() {
   }
 
   if (!colaborador) {
-    return <LoginPage onAutenticado={atualizarSessao} />
+    return <LoginPage />
+  }
+
+  if (!colaborador.nome || !colaborador.matricula) {
+    return <CompletarCadastroPage onConcluido={atualizarSessao} />
   }
 
   return (
-    <HashRouter>
+    <BrowserRouter basename="/cbb-agendamentos">
       <Header colaborador={colaborador} />
       <main>
         <Routes>
@@ -40,7 +46,7 @@ function App() {
           <Route path="/evento/:slug" element={<EventoPage />} />
         </Routes>
       </main>
-    </HashRouter>
+    </BrowserRouter>
   )
 }
 
