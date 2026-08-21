@@ -33,7 +33,7 @@ function App() {
     return <LoginPage />
   }
 
-  if (!colaborador.nome || !colaborador.matricula) {
+  if (!colaborador.nome) {
     return <CompletarCadastroPage onConcluido={atualizarSessao} />
   }
 

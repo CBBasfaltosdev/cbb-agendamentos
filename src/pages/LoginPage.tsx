@@ -4,7 +4,6 @@ import logo from '../assets/logo-cbb.png'
 
 export default function LoginPage() {
   const [nome, setNome] = useState('')
-  const [matricula, setMatricula] = useState('')
   const [email, setEmail] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
@@ -14,8 +13,8 @@ export default function LoginPage() {
     ev.preventDefault()
     setErro(null)
 
-    if (!nome.trim() || !matricula.trim()) {
-      setErro('Preencha nome e matrícula.')
+    if (!nome.trim()) {
+      setErro('Preencha seu nome.')
       return
     }
     if (!emailValido(email)) {
@@ -25,7 +24,7 @@ export default function LoginPage() {
 
     setEnviando(true)
     try {
-      await iniciarLogin({ nome, matricula, email })
+      await iniciarLogin({ nome, email })
       setLinkEnviado(true)
     } catch (e) {
       setErro('Não foi possível enviar o e-mail de confirmação. Tente novamente.')
@@ -37,21 +36,17 @@ export default function LoginPage() {
   return (
     <div className="pagina-login">
       <div className="cartao-login">
-        <img src={logo} alt="CBB Asfaltos" className="logo-login" />
+        <img src={logo} alt="CBB Asfaltos" className="logo-login" width={1128} height={500} />
 
         {!linkEnviado && (
           <form onSubmit={enviar}>
             <h1>Entrar</h1>
             <p className="subtitulo">
-              Use seu nome, matrícula e e-mail corporativo para acessar os agendamentos.
+              Use seu nome e e-mail corporativo para acessar os agendamentos.
             </p>
             <label>
               Nome completo
               <input value={nome} onChange={(e) => setNome(e.target.value)} autoFocus />
-            </label>
-            <label>
-              Matrícula
-              <input value={matricula} onChange={(e) => setMatricula(e.target.value)} />
             </label>
             <label>
               E-mail corporativo

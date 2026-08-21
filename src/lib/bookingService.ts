@@ -121,11 +121,8 @@ export function emailValido(email: string): boolean {
 const SITE_URL = 'https://devcbbasfaltos.github.io/cbb-agendamentos/'
 const CHAVE_CADASTRO_PENDENTE = 'cbb_cadastro_pendente'
 
-export async function iniciarLogin(dados: { nome: string; matricula: string; email: string }): Promise<void> {
-  sessionStorage.setItem(
-    CHAVE_CADASTRO_PENDENTE,
-    JSON.stringify({ nome: dados.nome.trim(), matricula: dados.matricula.trim() })
-  )
+export async function iniciarLogin(dados: { nome: string; email: string }): Promise<void> {
+  sessionStorage.setItem(CHAVE_CADASTRO_PENDENTE, JSON.stringify({ nome: dados.nome.trim() }))
 
   const { error } = await supabase.auth.signInWithOtp({
     email: dados.email.trim().toLowerCase(),
@@ -138,22 +135,22 @@ export async function iniciarLogin(dados: { nome: string; matricula: string; ema
 }
 
 // Chamado assim que a sessão é detectada (depois do clique no link). Se o cadastro pendente
-// estiver salvo neste mesmo navegador, aplica nome/matrícula automaticamente. Se o link foi
-// aberto em outro aparelho/navegador, não há nada salvo — a tela de cadastro pede de novo.
+// estiver salvo neste mesmo navegador, aplica o nome automaticamente. Se o link foi aberto
+// em outro aparelho/navegador, não há nada salvo — a tela de cadastro pede de novo.
 export async function aplicarCadastroPendente(): Promise<void> {
   const bruto = sessionStorage.getItem(CHAVE_CADASTRO_PENDENTE)
   if (!bruto) return
 
   sessionStorage.removeItem(CHAVE_CADASTRO_PENDENTE)
-  const dados = JSON.parse(bruto) as { nome: string; matricula: string }
-  if (!dados.nome || !dados.matricula) return
+  const dados = JSON.parse(bruto) as { nome: string }
+  if (!dados.nome) return
 
   await supabase.auth.updateUser({ data: dados })
 }
 
-export async function salvarCadastro(dados: { nome: string; matricula: string }): Promise<void> {
+export async function salvarCadastro(dados: { nome: string }): Promise<void> {
   const { error } = await supabase.auth.updateUser({
-    data: { nome: dados.nome.trim(), matricula: dados.matricula.trim() },
+    data: { nome: dados.nome.trim() },
   })
   if (error) throw error
 }
@@ -161,7 +158,6 @@ export async function salvarCadastro(dados: { nome: string; matricula: string })
 export type Colaborador = {
   email: string
   nome: string
-  matricula: string
 }
 
 export async function colaboradorAutenticado(): Promise<Colaborador | null> {
@@ -171,7 +167,6 @@ export async function colaboradorAutenticado(): Promise<Colaborador | null> {
   return {
     email: user.email,
     nome: (user.user_metadata?.nome as string) ?? '',
-    matricula: (user.user_metadata?.matricula as string) ?? '',
   }
 }
 
@@ -208,7 +203,6 @@ export async function criarAgendamento(
     const { error } = await supabase.from('agendamentos').insert({
       slot_id: slotId,
       colaborador_nome: colaborador.nome,
-      colaborador_matricula: colaborador.matricula,
       colaborador_email: colaborador.email,
     })
 

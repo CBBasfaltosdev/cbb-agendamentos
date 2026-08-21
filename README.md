@@ -11,8 +11,10 @@ evento de RH, etc.) **sem precisar alterar código** — basta cadastrar novas l
 - **Backend**: Supabase (Postgres + Auth). Toda a comunicação com o Supabase fica isolada em
   [`src/lib/bookingService.ts`](src/lib/bookingService.ts) — se um dia a CBB decidir trocar de
   backend (ex: unificar com o `gestao.cbbasfaltos.com.br`), só esse arquivo precisa mudar.
-- **Identificação do colaborador**: nome + matrícula + e-mail corporativo, confirmado por
-  código de 6 dígitos enviado por e-mail (Supabase Auth, sem senha).
+- **Identificação do colaborador**: nome + e-mail corporativo. A confirmação é por link
+  enviado por e-mail (Supabase Auth, sem senha) — o plano Free do Supabase não permite
+  personalizar o e-mail para mostrar um código, então o login é "clique no link" em vez de
+  "digite o código".
 
 ## Rodando localmente
 

@@ -57,6 +57,6 @@
   --radius-lg: 16px;
   --shadow-modal: 0 12px 32px -8px rgba(55, 52, 53, 0.25);
 
-  /* Tipografia */
-  --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  /* Tipografia — Manrope (self-hosted via @fontsource-variable, sem depender de CDN externo) */
+  --font-sans: 'Manrope Variable', Manrope, system-ui, 'Segoe UI', Roboto, sans-serif;
 }
