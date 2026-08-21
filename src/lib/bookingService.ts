@@ -245,7 +245,9 @@ export async function trocarHorario(
 // Os dados do colaborador vêm da sessão autenticada, não são mais digitados a cada reserva.
 export async function criarAgendamento(
   slotIds: string[]
-): Promise<{ ok: true } | { ok: false; motivo: 'sem_vaga' | 'nao_autenticado' | 'erro' }> {
+): Promise<
+  { ok: true } | { ok: false; motivo: 'sem_vaga' | 'nao_autenticado' | 'ja_reservado' | 'erro' }
+> {
   const colaborador = await colaboradorAutenticado()
   if (!colaborador) return { ok: false, motivo: 'nao_autenticado' }
 
@@ -258,6 +260,9 @@ export async function criarAgendamento(
     })
 
     if (!error) return { ok: true }
+    // P0001 = trigger do banco recusou por já existir uma reserva confirmada da mesma
+    // pessoa neste evento — não adianta tentar outro slot da lista, o problema não é vaga.
+    if (error.code === 'P0001') return { ok: false, motivo: 'ja_reservado' }
     if (error.code !== '23505') return { ok: false, motivo: 'erro' }
   }
 

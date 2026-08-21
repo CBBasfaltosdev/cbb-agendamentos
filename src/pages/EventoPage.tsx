@@ -6,6 +6,7 @@ import {
   minhasReservas,
   criarAgendamento,
   trocarHorario,
+  cancelarAgendamento,
   type Evento,
   type Horario,
   type Periodo,
@@ -51,6 +52,10 @@ export default function EventoPage() {
   const [etapa, setEtapa] = useState<Etapa>('lista')
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
+
+  const [cancelando, setCancelando] = useState<MinhaReserva | null>(null)
+  const [erroCancelamento, setErroCancelamento] = useState<string | null>(null)
+  const [cancelandoEnviando, setCancelandoEnviando] = useState(false)
 
   const tituloModalRef = useRef<HTMLHeadingElement>(null)
 
@@ -131,6 +136,10 @@ export default function EventoPage() {
     return minhasReservasEvento.find((r) => r.inicio === inicio)
   }
 
+  // Regra de produto: 1 reserva confirmada por pessoa, por evento (reforçada também no
+  // banco via trigger — isto aqui só evita nem abrir o fluxo de reservar outra).
+  const jaTenhoReservaNoEvento = minhasReservasEvento.length > 0
+
   function abrirReserva(horario: Horario) {
     if (horario.vagasLivres === 0) return
     setErroPagina(null)
@@ -144,6 +153,27 @@ export default function EventoPage() {
     setEtapa('lista')
     setErro(null)
     if (trocarId) navigate(`/evento/${slug}`, { replace: true })
+  }
+
+  function abrirCancelamento(reserva: MinhaReserva) {
+    setErroPagina(null)
+    setErroCancelamento(null)
+    setCancelando(reserva)
+  }
+
+  async function confirmarCancelamento() {
+    if (!cancelando) return
+    setErroCancelamento(null)
+    setCancelandoEnviando(true)
+    try {
+      await cancelarAgendamento(cancelando.id)
+      setCancelando(null)
+      await carregar()
+    } catch (e) {
+      setErroCancelamento('Não foi possível cancelar. Tente novamente.')
+    } finally {
+      setCancelandoEnviando(false)
+    }
   }
 
   async function confirmarReserva() {
@@ -164,6 +194,11 @@ export default function EventoPage() {
           setHorarioSelecionado(null)
         } else if (resultado.motivo === 'nao_autenticado') {
           setErroPagina('Sua sessão expirou. Recarregue a página e entre novamente.')
+        } else if (resultado.motivo === 'ja_reservado') {
+          setErroPagina('Você já tem uma reserva confirmada neste evento. Cancele a atual para escolher outro horário.')
+          await carregar()
+          setEtapa('lista')
+          setHorarioSelecionado(null)
         } else {
           setErro('Não foi possível concluir. Tente novamente em alguns segundos.')
         }
@@ -229,9 +264,11 @@ export default function EventoPage() {
           <h2 className="titulo-secao">Escolha seu horário</h2>
           {periodoAtivo && (
             <p className="ajuda-secao">
-              {(periodos.find((p) => p.periodo === periodoAtivo)?.horariosLivres ?? 0) === 0
-                ? `Nenhum horário livre ${periodoAtivo === 'manha' ? 'pela manhã' : periodoAtivo === 'tarde' ? 'à tarde' : 'à noite'} — veja outro período acima.`
-                : `${periodos.find((p) => p.periodo === periodoAtivo)?.horariosLivres} horários livres${duracaoMin ? ` · sessões de ${duracaoMin} min` : ''}`}
+              {jaTenhoReservaNoEvento && !trocarId
+                ? 'Você já tem uma reserva neste evento — toque nela na grade para cancelar.'
+                : (periodos.find((p) => p.periodo === periodoAtivo)?.horariosLivres ?? 0) === 0
+                  ? `Nenhum horário livre ${periodoAtivo === 'manha' ? 'pela manhã' : periodoAtivo === 'tarde' ? 'à tarde' : 'à noite'} — veja outro período acima.`
+                  : `${periodos.find((p) => p.periodo === periodoAtivo)?.horariosLivres} horários livres${duracaoMin ? ` · sessões de ${duracaoMin} min` : ''}`}
             </p>
           )}
 
@@ -242,20 +279,37 @@ export default function EventoPage() {
                   const minha = minhaReservaNoHorario(h.inicio)
                   const ehMinhaSemTroca = minha && !trocarId
                   const esgotado = h.vagasLivres === 0 && !ehMinhaSemTroca
-                  const ultimaVaga = h.vagasLivres === 1 && !ehMinhaSemTroca
+                  const bloqueadoPorLimite = jaTenhoReservaNoEvento && !trocarId && !esgotado && !ehMinhaSemTroca
+                  const ultimaVaga = h.vagasLivres === 1 && !ehMinhaSemTroca && !bloqueadoPorLimite
 
                   if (ehMinhaSemTroca) {
                     return (
-                      <button key={h.inicio} type="button" className="slot slot-minha" disabled aria-label={`${formatarHora(h.inicio)}, sua reserva`}>
+                      <button
+                        key={h.inicio}
+                        type="button"
+                        className="slot slot-minha"
+                        onClick={() => abrirCancelamento(minha!)}
+                        aria-label={`Cancelar sua reserva das ${formatarHora(h.inicio)}`}
+                      >
                         <span className="slot-hora">{formatarHora(h.inicio)}</span>
                         <span className="slot-nota">sua reserva</span>
                       </button>
                     )
                   }
 
-                  if (esgotado) {
+                  if (esgotado || bloqueadoPorLimite) {
                     return (
-                      <button key={h.inicio} type="button" className="slot slot-esgotado" disabled aria-label={`${formatarHora(h.inicio)}, esgotado`}>
+                      <button
+                        key={h.inicio}
+                        type="button"
+                        className="slot slot-esgotado"
+                        disabled
+                        aria-label={
+                          esgotado
+                            ? `${formatarHora(h.inicio)}, esgotado`
+                            : `${formatarHora(h.inicio)}, indisponível — você já tem uma reserva neste evento`
+                        }
+                      >
                         <span className="slot-hora">{formatarHora(h.inicio)}</span>
                       </button>
                     )
@@ -279,7 +333,7 @@ export default function EventoPage() {
               <ul className="legenda-horarios">
                 <li><span className="amostra amostra-livre" />Disponível</li>
                 {minhasReservasEvento.length > 0 && !trocarId && (
-                  <li><span className="amostra amostra-minha" />Sua reserva</li>
+                  <li><span className="amostra amostra-minha" />Sua reserva (toque para cancelar)</li>
                 )}
                 {horariosDoPeriodo.some((h) => h.vagasLivres === 0) && (
                   <li><span className="amostra amostra-esgotado" />Esgotado</li>
@@ -313,11 +367,6 @@ export default function EventoPage() {
                   <dt>Horário</dt>
                   <dd>{formatarHora(horarioSelecionado.inicio)} às {formatarHora(horarioSelecionado.fim)}</dd>
                 </dl>
-                {!trocarId && minhasReservasEvento.length > 0 && (
-                  <p className="aviso-modal">
-                    Você já tem o horário das {formatarHora(minhasReservasEvento[0].inicio)} reservado neste evento. Esta será mais uma reserva sua.
-                  </p>
-                )}
                 {erro && <p className="mensagem erro">{erro}</p>}
                 <div className="acoes-modal">
                   <button type="button" className="botao-texto" onClick={fecharFluxo} disabled={enviando}>
@@ -351,6 +400,33 @@ export default function EventoPage() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {cancelando && (
+        <div
+          className="modal-fundo"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="titulo-modal-cancelar"
+          onClick={() => !cancelandoEnviando && setCancelando(null)}
+        >
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2 id="titulo-modal-cancelar">Cancelar sua reserva?</h2>
+            <p className="resumo-horario">
+              {formatarHora(cancelando.inicio)}, dia {formatarDataCompleta(evento.dataInicio)}
+            </p>
+            <p className="descricao">O horário volta a ficar disponível para outros colaboradores.</p>
+            {erroCancelamento && <p className="mensagem erro">{erroCancelamento}</p>}
+            <div className="acoes-modal">
+              <button type="button" className="botao-texto" onClick={() => setCancelando(null)} disabled={cancelandoEnviando}>
+                Manter reserva
+              </button>
+              <button type="button" className="botao-texto-perigo" onClick={confirmarCancelamento} disabled={cancelandoEnviando}>
+                {cancelandoEnviando ? 'Cancelando…' : 'Cancelar reserva'}
+              </button>
+            </div>
           </div>
         </div>
       )}

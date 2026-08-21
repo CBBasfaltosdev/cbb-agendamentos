@@ -492,6 +492,9 @@
   border: none;
   color: var(--color-text-muted);
   padding-inline: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
 }
 
 .botao-texto:hover:not(:disabled) {
