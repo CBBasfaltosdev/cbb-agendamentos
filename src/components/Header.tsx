@@ -4,7 +4,7 @@ import icone from '../assets/icone-cbb.png'
 import { sair, type Colaborador } from '../lib/bookingService'
 import './Header.css'
 
-export default function Header({ colaborador }: { colaborador: Colaborador }) {
+export default function Header({ colaborador, isAdmin }: { colaborador: Colaborador; isAdmin: boolean }) {
   return (
     <>
       <div className="faixa-marca" aria-hidden="true" />
@@ -14,6 +14,14 @@ export default function Header({ colaborador }: { colaborador: Colaborador }) {
           <img src={icone} alt="CBB Asfaltos" className="logo-compacto" />
         </Link>
         <div className="area-colaborador">
+          {isAdmin && (
+            <Link to="/admin" className="link-painel">
+              Painel
+            </Link>
+          )}
+          <Link to="/meus-agendamentos" className="link-painel">
+            Meus agendamentos
+          </Link>
           <span className="nome-colaborador">{colaborador.nome || colaborador.email}</span>
           <button type="button" className="botao-sair" onClick={() => sair()}>
             Sair

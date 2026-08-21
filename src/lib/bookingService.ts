@@ -24,10 +24,12 @@ export type SlotDisponivel = {
   ocupado: boolean
 }
 
-export type MeuAgendamento = {
+export type MinhaReserva = {
   id: string
   slotId: string
-  status: 'confirmado' | 'cancelado'
+  inicio: string
+  fim: string
+  data: string
   createdAt: string
 }
 
@@ -156,6 +158,7 @@ export async function salvarCadastro(dados: { nome: string }): Promise<void> {
 }
 
 export type Colaborador = {
+  id: string
   email: string
   nome: string
 }
@@ -165,6 +168,7 @@ export async function colaboradorAutenticado(): Promise<Colaborador | null> {
   const user = data.user
   if (!user || !user.email) return null
   return {
+    id: user.id,
     email: user.email,
     nome: (user.user_metadata?.nome as string) ?? '',
   }
@@ -174,20 +178,66 @@ export async function sair(): Promise<void> {
   await supabase.auth.signOut()
 }
 
-export async function meusAgendamentos(): Promise<MeuAgendamento[]> {
-  const { data, error } = await supabase
-    .from('agendamentos')
-    .select('id, slot_id, status, created_at')
-    .eq('status', 'confirmado')
-
+// Reservas confirmadas do colaborador logado, só neste evento (não em outros que existam).
+export async function minhasReservas(eventoSlug: string): Promise<MinhaReserva[]> {
+  const { data, error } = await supabase.rpc('minhas_reservas', { p_evento_slug: eventoSlug })
   if (error) throw error
 
-  return (data ?? []).map((a) => ({
-    id: a.id,
-    slotId: a.slot_id,
-    status: a.status,
-    createdAt: a.created_at,
+  return (data ?? []).map((r: any) => ({
+    id: r.id,
+    slotId: r.slot_id,
+    inicio: r.inicio,
+    fim: r.fim,
+    data: r.data,
+    createdAt: r.created_at,
   }))
+}
+
+export type MinhaReservaTodas = {
+  id: string
+  slotId: string
+  eventoNome: string
+  eventoSlug: string
+  data: string
+  inicio: string
+  fim: string
+  createdAt: string
+}
+
+// "Meus agendamentos" de verdade: todas as reservas da pessoa, em qualquer evento — não só
+// no evento em que ela está navegando agora.
+export async function minhasReservasTodas(): Promise<MinhaReservaTodas[]> {
+  const { data, error } = await supabase.rpc('minhas_reservas_todas')
+  if (error) throw error
+
+  return (data ?? []).map((r: any) => ({
+    id: r.id,
+    slotId: r.slot_id,
+    eventoNome: r.evento_nome,
+    eventoSlug: r.evento_slug,
+    data: r.data,
+    inicio: r.inicio,
+    fim: r.fim,
+    createdAt: r.created_at,
+  }))
+}
+
+// Troca atômica de horário (cancela o antigo + reserva o novo na mesma transação do banco).
+// Tenta cada slot livre da lista até um funcionar, igual criarAgendamento — se todos já
+// tiverem sido tomados, devolve 'sem_vaga' sem deixar a reserva antiga cancelada sem nada.
+export async function trocarHorario(
+  agendamentoId: string,
+  slotIdsCandidatos: string[]
+): Promise<{ ok: true } | { ok: false; motivo: 'sem_vaga' | 'erro' }> {
+  for (const slotId of slotIdsCandidatos) {
+    const { error } = await supabase.rpc('trocar_horario', {
+      p_agendamento_id: agendamentoId,
+      p_novo_slot_id: slotId,
+    })
+    if (!error) return { ok: true }
+    if (error.code !== '23505') return { ok: false, motivo: 'erro' }
+  }
+  return { ok: false, motivo: 'sem_vaga' }
 }
 
 // Recebe todos os slot_id livres naquele horário (um por profissional) e tenta reservar
@@ -202,6 +252,7 @@ export async function criarAgendamento(
   for (const slotId of slotIds) {
     const { error } = await supabase.from('agendamentos').insert({
       slot_id: slotId,
+      colaborador_id: colaborador.id,
       colaborador_nome: colaborador.nome,
       colaborador_email: colaborador.email,
     })
@@ -219,4 +270,47 @@ export async function cancelarAgendamento(id: string): Promise<void> {
     .update({ status: 'cancelado' })
     .eq('id', id)
   if (error) throw error
+}
+
+// ===== Painel administrativo =====
+
+export async function souAdmin(): Promise<boolean> {
+  const { data, error } = await supabase.from('admins').select('email').maybeSingle()
+  if (error) return false
+  return !!data
+}
+
+export async function entrarComoAdmin(email: string, senha: string): Promise<void> {
+  const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password: senha })
+  if (error) throw error
+}
+
+export type AgendamentoAdmin = {
+  id: string
+  nome: string
+  email: string
+  status: 'confirmado' | 'cancelado'
+  eventoNome: string
+  data: string
+  inicio: string
+  createdAt: string
+}
+
+// Nome ATUAL do perfil de quem reservou (join com auth.users dentro da função), não o nome
+// congelado no momento da reserva — assim corrigir o próprio nome não faz reservas antigas
+// parecerem de outra pessoa. A checagem "é admin mesmo?" também vive dentro da função.
+export async function listarTodosAgendamentos(): Promise<AgendamentoAdmin[]> {
+  const { data, error } = await supabase.rpc('admin_listar_agendamentos')
+  if (error) throw error
+
+  return (data ?? []).map((a: any) => ({
+    id: a.id,
+    nome: a.nome,
+    email: a.email,
+    status: a.status,
+    eventoNome: a.evento_nome ?? '—',
+    data: a.data ?? '',
+    inicio: a.inicio ?? '',
+    createdAt: a.created_at,
+  }))
 }

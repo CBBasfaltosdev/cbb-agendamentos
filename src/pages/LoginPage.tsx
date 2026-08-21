@@ -1,13 +1,22 @@
 import { useState } from 'react'
-import { emailValido, iniciarLogin } from '../lib/bookingService'
+import { emailValido, iniciarLogin, entrarComoAdmin } from '../lib/bookingService'
 import logo from '../assets/logo-cbb.png'
 
+type Modo = 'colaborador' | 'admin'
+
 export default function LoginPage() {
+  const [modo, setModo] = useState<Modo>('colaborador')
+
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
   const [linkEnviado, setLinkEnviado] = useState(false)
+
+  const [emailAdmin, setEmailAdmin] = useState('')
+  const [senhaAdmin, setSenhaAdmin] = useState('')
+  const [erroAdmin, setErroAdmin] = useState<string | null>(null)
+  const [enviandoAdmin, setEnviandoAdmin] = useState(false)
 
   async function enviar(ev: React.FormEvent) {
     ev.preventDefault()
@@ -33,12 +42,31 @@ export default function LoginPage() {
     }
   }
 
+  async function entrarAdmin(ev: React.FormEvent) {
+    ev.preventDefault()
+    setErroAdmin(null)
+
+    if (!emailAdmin.trim() || !senhaAdmin) {
+      setErroAdmin('Preencha e-mail e senha.')
+      return
+    }
+
+    setEnviandoAdmin(true)
+    try {
+      await entrarComoAdmin(emailAdmin, senhaAdmin)
+    } catch (e) {
+      setErroAdmin('E-mail ou senha incorretos.')
+    } finally {
+      setEnviandoAdmin(false)
+    }
+  }
+
   return (
     <div className="pagina-login">
       <div className="cartao-login">
         <img src={logo} alt="CBB Asfaltos" className="logo-login" width={1128} height={500} />
 
-        {!linkEnviado && (
+        {modo === 'colaborador' && !linkEnviado && (
           <form onSubmit={enviar}>
             <h1>Entrar</h1>
             <p className="subtitulo">
@@ -61,10 +89,17 @@ export default function LoginPage() {
             <button type="submit" className="botao-primario botao-bloco" disabled={enviando}>
               {enviando ? 'Enviando…' : 'Enviar link de acesso'}
             </button>
+            <button
+              type="button"
+              className="botao-texto botao-bloco-centro"
+              onClick={() => setModo('admin')}
+            >
+              Entrar como administrador
+            </button>
           </form>
         )}
 
-        {linkEnviado && (
+        {modo === 'colaborador' && linkEnviado && (
           <div>
             <h1>Verifique seu e-mail</h1>
             <p className="subtitulo">
@@ -80,6 +115,37 @@ export default function LoginPage() {
               .
             </p>
           </div>
+        )}
+
+        {modo === 'admin' && (
+          <form onSubmit={entrarAdmin}>
+            <h1>Acesso administrativo</h1>
+            <p className="subtitulo">Entre com o e-mail e a senha de administração dos agendamentos.</p>
+            <label>
+              E-mail
+              <input
+                type="email"
+                value={emailAdmin}
+                onChange={(e) => setEmailAdmin(e.target.value)}
+                autoFocus
+              />
+            </label>
+            <label>
+              Senha
+              <input type="password" value={senhaAdmin} onChange={(e) => setSenhaAdmin(e.target.value)} />
+            </label>
+            {erroAdmin && <p className="mensagem erro">{erroAdmin}</p>}
+            <button type="submit" className="botao-primario botao-bloco" disabled={enviandoAdmin}>
+              {enviandoAdmin ? 'Entrando…' : 'Entrar'}
+            </button>
+            <button
+              type="button"
+              className="botao-texto botao-bloco-centro"
+              onClick={() => setModo('colaborador')}
+            >
+              ← Voltar para o login de colaborador
+            </button>
+          </form>
         )}
       </div>
     </div>

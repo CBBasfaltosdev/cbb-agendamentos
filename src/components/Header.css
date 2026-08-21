@@ -28,14 +28,31 @@
   gap: var(--space-3);
 }
 
+.link-painel {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-link);
+  text-decoration: none;
+}
+
+.link-painel:hover {
+  color: var(--color-link-hover);
+}
+
 .nome-colaborador {
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--color-text);
-  max-width: 40vw;
+  max-width: 22vw;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .nome-colaborador {
+    display: none;
+  }
 }
 
 .botao-sair {

@@ -125,30 +125,63 @@
   color: var(--color-primary);
 }
 
-/* ===== Legenda ===== */
+.chip-esgotado {
+  color: var(--color-disabled-text-strong);
+}
 
-.legenda {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
+.chip:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+/* ===== Título de seção / alerta de página ===== */
+
+.titulo-secao {
+  font-size: 1rem;
+  color: var(--color-ink);
   margin-bottom: var(--space-3);
+}
+
+.alerta-pagina {
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.alerta-pagina.erro {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  border-left: 3px solid var(--color-error);
+}
+
+/* ===== "Minha reserva" (cartão + selo na linha) ===== */
+
+.cartao-minha-reserva {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-5);
 }
 
-.marcador {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  margin-right: var(--space-1);
+.cartao-minha-reserva strong {
+  color: var(--color-ink);
 }
 
-.marcador-livre {
+.selo-minha-reserva {
   background: var(--color-primary);
-}
-
-.marcador-indisponivel {
-  background: var(--color-disabled-text);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: var(--space-1) var(--space-3);
 }
 
 /* ===== Lista de horários ===== */
@@ -184,9 +217,29 @@
   background: var(--color-primary-subtle);
 }
 
+.linha-horario:hover:not(.indisponivel) .acao-reservar {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.linha-horario:active:not(.indisponivel) {
+  background: var(--color-primary-subtle);
+}
+
+.linha-horario:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
 .linha-horario.indisponivel {
   cursor: not-allowed;
   background: var(--color-disabled-bg);
+}
+
+.linha-horario.minha-reserva {
+  background: var(--color-success-bg);
+  border-left: 3px solid var(--color-primary);
+  cursor: default;
 }
 
 .linha-horario .hora {
@@ -203,13 +256,16 @@
 }
 
 .linha-horario.indisponivel .status-horario {
-  color: var(--color-disabled-text);
+  color: var(--color-disabled-text-strong);
 }
 
 .linha-horario .acao-reservar {
   color: var(--color-primary);
-  font-weight: 600;
-  font-size: 0.875rem;
+  font-weight: 700;
+  font-size: 0.8125rem;
+  border: 1px solid var(--color-primary);
+  border-radius: 999px;
+  padding: var(--space-1) var(--space-3);
 }
 
 /* ===== Modal ===== */
@@ -250,6 +306,34 @@
 
 .resumo-horario {
   color: var(--color-text);
+  margin-bottom: var(--space-2);
+}
+
+.resumo-reserva {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-4) 0;
+}
+
+.resumo-reserva dt {
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
+.resumo-reserva dd {
+  margin: 0;
+  color: var(--color-ink);
+  font-weight: 600;
+  text-align: right;
+}
+
+.aviso-modal {
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  font-size: 0.875rem;
   margin-bottom: var(--space-2);
 }
 
@@ -334,6 +418,61 @@
 .botao-texto:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+.botao-texto-perigo {
+  background: transparent;
+  border: none;
+  color: var(--color-error);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  padding-inline: var(--space-2);
+  min-height: 44px;
+}
+
+.botao-texto-perigo:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.botao-texto-perigo:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* ===== Meus agendamentos ===== */
+
+.linha-minha-reserva {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+
+.acoes-linha {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.form-editar-nome {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.form-editar-nome input {
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  font: inherit;
 }
 
 @media (max-width: 600px) {
@@ -426,9 +565,82 @@
   margin-top: var(--space-6);
 }
 
+.botao-bloco-centro {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-4);
+  text-align: center;
+}
+
 .acoes-login {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-top: var(--space-6);
+}
+
+/* ===== Painel admin ===== */
+
+.campo-busca {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin: var(--space-4) 0;
+  max-width: 320px;
+}
+
+.campo-busca input {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin-top: var(--space-2);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.tabela-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.tabela-admin {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  min-width: 560px;
+}
+
+.tabela-admin th,
+.tabela-admin td {
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  white-space: nowrap;
+}
+
+.tabela-admin th {
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.tabela-admin tbody tr + tr {
+  border-top: 1px solid var(--color-border);
+}
+
+.tabela-admin td {
+  color: var(--color-ink);
+}
+
+.estado-vazio {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--color-text-muted);
 }
