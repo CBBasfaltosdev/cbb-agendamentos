@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Header from './components/Header'
 import HomePage from './pages/HomePage'
@@ -15,7 +15,13 @@ function App() {
   const [colaborador, setColaborador] = useState<Colaborador | null | undefined>(undefined)
   const [isAdmin, setIsAdmin] = useState(false)
 
+  // Supabase dispara onAuthStateChange várias vezes (INITIAL_SESSION, TOKEN_REFRESHED, sign
+  // in/out) — se duas chamadas ficarem em voo ao mesmo tempo, só a mais recente pode aplicar
+  // o resultado, senão uma resposta mais lenta e desatualizada sobrescreve o estado certo.
+  const chamadaAtualRef = useRef(0)
+
   async function atualizarSessao() {
+    const chamada = ++chamadaAtualRef.current
     try {
       await aplicarCadastroPendente()
     } catch (e) {
@@ -23,8 +29,10 @@ function App() {
       // em "Carregando…" para sempre — se falhar, CompletarCadastroPage pede o nome de novo.
     }
     const atual = await colaboradorAutenticado()
+    const admin = atual ? await souAdmin() : false
+    if (chamada !== chamadaAtualRef.current) return
     setColaborador(atual)
-    setIsAdmin(atual ? await souAdmin() : false)
+    setIsAdmin(admin)
   }
 
   useEffect(() => {

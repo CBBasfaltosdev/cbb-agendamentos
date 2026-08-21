@@ -59,8 +59,15 @@ export default function EventoPage() {
 
   const tituloModalRef = useRef<HTMLHeadingElement>(null)
 
+  // Se duas chamadas de carregar() ficarem em voo ao mesmo tempo (ex: troca rápida de slug,
+  // ou uma atualização em segundo plano ainda não terminou quando outra começa), só a mais
+  // recente pode aplicar o resultado — senão uma resposta mais lenta e desatualizada pode
+  // sobrescrever um estado mais novo.
+  const chamadaAtualRef = useRef(0)
+
   async function carregar() {
     if (!slug) return
+    const chamada = ++chamadaAtualRef.current
     setCarregando(true)
     setErroCarregamento(null)
     try {
@@ -69,14 +76,19 @@ export default function EventoPage() {
         listarHorarios(slug),
         minhasReservas(slug),
       ])
+      if (chamada !== chamadaAtualRef.current) return
       const encontrado = eventos.find((e) => e.slug === slug) ?? null
       setEvento(encontrado)
-      setHorarios(listaHorarios)
+      // A tela hoje só mostra um dia (evento.dataInicio) — se um evento futuro abranger
+      // vários dias, filtra aqui pra não misturar o mesmo horário (ex: 08:30) de dias
+      // diferentes na mesma grade. Seletor de data fica para quando isso for necessário.
+      setHorarios(encontrado ? listaHorarios.filter((h) => h.data === encontrado.dataInicio) : listaHorarios)
       setMinhasReservasEvento(reservas)
     } catch (e) {
+      if (chamada !== chamadaAtualRef.current) return
       setErroCarregamento('Não foi possível carregar os horários. Tente recarregar a página.')
     } finally {
-      setCarregando(false)
+      if (chamada === chamadaAtualRef.current) setCarregando(false)
     }
   }
 
@@ -214,7 +226,10 @@ export default function EventoPage() {
     }
   }
 
-  if (carregando) return <p className="mensagem">Carregando horários…</p>
+  // Só bloqueia a tela inteira no carregamento inicial — carregar() roda de novo depois de
+  // reservar/cancelar (para atualizar a grade), e nesse recarregamento em segundo plano a
+  // tela não pode sumir escondendo o modal de sucesso/erro que acabou de abrir.
+  if (carregando && !evento) return <p className="mensagem">Carregando horários…</p>
   if (erroCarregamento) return <p className="mensagem erro">{erroCarregamento}</p>
   if (!evento) return <p className="mensagem">Evento não encontrado. <Link to="/">Voltar</Link></p>
 

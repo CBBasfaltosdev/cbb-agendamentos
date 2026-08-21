@@ -36,6 +36,7 @@ export type MinhaReserva = {
 export type Periodo = 'manha' | 'tarde' | 'noite'
 
 export type Horario = {
+  data: string
   inicio: string
   fim: string
   periodo: Periodo
@@ -93,8 +94,12 @@ export async function listarHorarios(eventoSlug: string): Promise<Horario[]> {
   const porHorario = new Map<string, Horario>()
 
   for (const s of slots) {
-    if (!porHorario.has(s.inicio)) {
-      porHorario.set(s.inicio, {
+    // Chave inclui a data — um evento de vários dias pode ter o mesmo horário (ex: 08:30)
+    // em dias diferentes, e agrupar só por "inicio" misturaria slot_id de dias distintos.
+    const chave = `${s.data}_${s.inicio}`
+    if (!porHorario.has(chave)) {
+      porHorario.set(chave, {
+        data: s.data,
         inicio: s.inicio,
         fim: s.fim,
         periodo: periodoDoHorario(s.inicio),
@@ -103,13 +108,15 @@ export async function listarHorarios(eventoSlug: string): Promise<Horario[]> {
       })
     }
     if (!s.ocupado) {
-      const h = porHorario.get(s.inicio)!
+      const h = porHorario.get(chave)!
       h.vagasLivres += 1
       h.slotIdsLivres.push(s.slotId)
     }
   }
 
-  return Array.from(porHorario.values()).sort((a, b) => a.inicio.localeCompare(b.inicio))
+  return Array.from(porHorario.values()).sort(
+    (a, b) => a.data.localeCompare(b.data) || a.inicio.localeCompare(b.inicio)
+  )
 }
 
 export function emailValido(email: string): boolean {
