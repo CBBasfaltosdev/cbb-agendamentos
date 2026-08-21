@@ -90,11 +90,13 @@
 
 .chips-periodo {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
   margin-bottom: var(--space-4);
 }
 
 .chip {
+  min-height: 44px;
   border: 1px solid var(--color-border-strong);
   background: var(--color-surface);
   border-radius: 999px;
@@ -184,7 +186,7 @@
   padding: var(--space-1) var(--space-3);
 }
 
-/* ===== Lista de horários ===== */
+/* ===== Lista de horários (usada em Meus Agendamentos) ===== */
 
 .lista-horarios {
   list-style: none;
@@ -199,73 +201,155 @@
   border-top: 1px solid var(--color-border);
 }
 
-.linha-horario {
-  width: 100%;
-  min-height: 56px;
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-surface);
-  border: none;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.linha-horario:hover:not(.indisponivel) {
-  background: var(--color-primary-subtle);
-}
-
-.linha-horario:hover:not(.indisponivel) .acao-reservar {
-  background: var(--color-primary);
-  color: #fff;
-}
-
-.linha-horario:active:not(.indisponivel) {
-  background: var(--color-primary-subtle);
-}
-
-.linha-horario:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: -2px;
-}
-
-.linha-horario.indisponivel {
-  cursor: not-allowed;
-  background: var(--color-disabled-bg);
-}
-
-.linha-horario.minha-reserva {
-  background: var(--color-success-bg);
-  border-left: 3px solid var(--color-primary);
-  cursor: default;
-}
-
-.linha-horario .hora {
+.hora {
   font-weight: 600;
   color: var(--color-ink);
-  min-width: 56px;
   font-variant-numeric: tabular-nums;
 }
 
-.linha-horario .status-horario {
+.status-horario {
   color: var(--color-text-muted);
   font-size: 0.875rem;
-  flex: 1;
 }
 
-.linha-horario.indisponivel .status-horario {
-  color: var(--color-disabled-text-strong);
-}
+/* ===== Grade de horários (tela de reservar) ===== */
 
-.linha-horario .acao-reservar {
-  color: var(--color-primary);
-  font-weight: 700;
+.ajuda-secao {
+  margin: calc(-1 * var(--space-2)) 0 var(--space-4);
   font-size: 0.8125rem;
-  border: 1px solid var(--color-primary);
-  border-radius: 999px;
-  padding: var(--space-1) var(--space-3);
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.grade-horarios {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: var(--space-2);
+}
+
+@media (min-width: 600px) {
+  .grade-horarios {
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: var(--space-3);
+  }
+}
+
+.slot {
+  min-height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--space-2) var(--space-1);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.slot-nota {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.slot:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+}
+
+.slot:active:not(:disabled) {
+  background: var(--color-success-bg);
+}
+
+.slot:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.slot-ultima .slot-nota {
+  color: var(--color-warning-text);
+}
+
+.slot-minha {
+  background: var(--color-success-bg);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  cursor: default;
+}
+
+.slot-minha .slot-nota {
+  color: var(--color-primary);
+}
+
+.slot-esgotado {
+  background: var(--color-disabled-bg);
+  border-color: var(--color-border);
+  color: var(--color-disabled-text-strong);
+  cursor: not-allowed;
+}
+
+.slot-esgotado .slot-hora {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.slot-esqueleto {
+  background: var(--color-surface-alt);
+  border-style: dashed;
+  animation: pulso 1.4s ease-in-out infinite;
+}
+
+@keyframes pulso {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.legenda-horarios {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.legenda-horarios li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.amostra {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid var(--color-border-strong);
+}
+
+.amostra-livre {
+  background: var(--color-surface);
+}
+
+.amostra-minha {
+  background: var(--color-success-bg);
+  border-color: var(--color-primary);
+}
+
+.amostra-esgotado {
+  background: var(--color-disabled-bg);
+  border-color: var(--color-border);
 }
 
 /* ===== Modal ===== */

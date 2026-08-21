@@ -95,29 +95,37 @@ export default function EventoPage() {
   }, [etapa, enviando])
 
   const periodos = useMemo(() => {
-    const vagasPorPeriodo = new Map<Periodo, number>()
+    const horariosLivresPorPeriodo = new Map<Periodo, number>()
     for (const h of horarios) {
-      vagasPorPeriodo.set(h.periodo, (vagasPorPeriodo.get(h.periodo) ?? 0) + h.vagasLivres)
+      if (h.vagasLivres === 0) continue
+      horariosLivresPorPeriodo.set(h.periodo, (horariosLivresPorPeriodo.get(h.periodo) ?? 0) + 1)
     }
     const presentes = new Set(horarios.map((h) => h.periodo))
     return (['manha', 'tarde', 'noite'] as Periodo[])
       .filter((p) => presentes.has(p))
-      .map((p) => ({ periodo: p, vagas: vagasPorPeriodo.get(p) ?? 0 }))
+      .map((p) => ({ periodo: p, horariosLivres: horariosLivresPorPeriodo.get(p) ?? 0 }))
   }, [horarios])
 
   useEffect(() => {
     if (periodoAtivo || periodos.length === 0) return
-    const melhor = periodos.reduce((a, b) => (b.vagas > a.vagas ? b : a))
+    const melhor = periodos.reduce((a, b) => (b.horariosLivres > a.horariosLivres ? b : a))
     setPeriodoAtivo(melhor.periodo)
   }, [periodos, periodoAtivo])
 
+  // Já vem ordenado por horário (listarHorarios ordena por inicio) — manter cronológico,
+  // não separar livre/esgotado em listas diferentes, senão a ordem do dia vira sopa de letra.
   const horariosDoPeriodo = useMemo(
     () => horarios.filter((h) => h.periodo === periodoAtivo),
     [horarios, periodoAtivo]
   )
 
-  const horariosLivres = horariosDoPeriodo.filter((h) => h.vagasLivres > 0)
-  const horariosEsgotados = horariosDoPeriodo.filter((h) => h.vagasLivres === 0)
+  const duracaoMin = useMemo(() => {
+    const h = horarios[0]
+    if (!h) return null
+    const [hi, mi] = h.inicio.split(':').map(Number)
+    const [hf, mf] = h.fim.split(':').map(Number)
+    return hf * 60 + mf - (hi * 60 + mi)
+  }, [horarios])
 
   function minhaReservaNoHorario(inicio: string): MinhaReserva | undefined {
     return minhasReservasEvento.find((r) => r.inicio === inicio)
@@ -202,67 +210,82 @@ export default function EventoPage() {
 
       {periodos.length > 0 && (
         <>
-          <div className="chips-periodo" role="tablist" aria-label="Período do dia">
-            {periodos.map(({ periodo, vagas }) => (
+          <div className="chips-periodo" role="group" aria-label="Período do dia">
+            {periodos.map(({ periodo, horariosLivres }) => (
               <button
                 key={periodo}
                 type="button"
-                role="tab"
-                aria-selected={periodoAtivo === periodo}
-                className={`chip ${periodoAtivo === periodo ? 'chip-ativo' : ''} ${vagas === 0 ? 'chip-esgotado' : ''}`}
+                aria-pressed={periodoAtivo === periodo}
+                aria-label={`${ROTULO_PERIODO[periodo]}, ${horariosLivres === 0 ? 'esgotado' : `${horariosLivres} horários livres`}`}
+                className={`chip ${periodoAtivo === periodo ? 'chip-ativo' : ''} ${horariosLivres === 0 ? 'chip-esgotado' : ''}`}
                 onClick={() => setPeriodoAtivo(periodo)}
               >
                 {ROTULO_PERIODO[periodo]}{' '}
-                <span className="chip-contagem">{vagas === 0 ? 'Esgotado' : vagas}</span>
+                <span className="chip-contagem">{horariosLivres === 0 ? 'Esgotado' : horariosLivres}</span>
               </button>
             ))}
           </div>
 
           <h2 className="titulo-secao">Escolha seu horário</h2>
-
-          {horariosDoPeriodo.length === 0 && (
-            <p className="estado-vazio">
-              Nenhum horário nesse período. Veja outro período acima.
+          {periodoAtivo && (
+            <p className="ajuda-secao">
+              {(periodos.find((p) => p.periodo === periodoAtivo)?.horariosLivres ?? 0) === 0
+                ? `Nenhum horário livre ${periodoAtivo === 'manha' ? 'pela manhã' : periodoAtivo === 'tarde' ? 'à tarde' : 'à noite'} — veja outro período acima.`
+                : `${periodos.find((p) => p.periodo === periodoAtivo)?.horariosLivres} horários livres${duracaoMin ? ` · sessões de ${duracaoMin} min` : ''}`}
             </p>
           )}
 
           {horariosDoPeriodo.length > 0 && (
-            <ul className="lista-horarios">
-              {horariosLivres.map((h) => {
-                const minha = minhaReservaNoHorario(h.inicio)
-                if (minha && !trocarId) {
-                  return (
-                    <li key={h.inicio}>
-                      <div className="linha-horario minha-reserva" aria-label={`Você já reservou ${formatarHora(h.inicio)}`}>
-                        <span className="hora">{formatarHora(h.inicio)}</span>
-                        <span className="status-horario">Reservado por você</span>
-                        <span className="selo-minha-reserva">Sua reserva</span>
-                      </div>
-                    </li>
-                  )
-                }
-                return (
-                  <li key={h.inicio}>
-                    <button type="button" className="linha-horario" onClick={() => abrirReserva(h)}>
-                      <span className="hora">{formatarHora(h.inicio)}</span>
-                      <span className="status-horario">
-                        {h.vagasLivres} {h.vagasLivres === 1 ? 'vaga' : 'vagas'}
-                      </span>
-                      <span className="acao-reservar">{trocarId ? 'Trocar para cá' : 'Reservar'}</span>
-                    </button>
-                  </li>
-                )
-              })}
+            <>
+              <div className="grade-horarios" role="group" aria-label={`Horários de ${ROTULO_PERIODO[periodoAtivo ?? 'manha']}`}>
+                {horariosDoPeriodo.map((h) => {
+                  const minha = minhaReservaNoHorario(h.inicio)
+                  const ehMinhaSemTroca = minha && !trocarId
+                  const esgotado = h.vagasLivres === 0 && !ehMinhaSemTroca
+                  const ultimaVaga = h.vagasLivres === 1 && !ehMinhaSemTroca
 
-              {horariosEsgotados.map((h) => (
-                <li key={h.inicio}>
-                  <div className="linha-horario indisponivel" aria-disabled="true">
-                    <span className="hora">{formatarHora(h.inicio)}</span>
-                    <span className="status-horario">Indisponível</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                  if (ehMinhaSemTroca) {
+                    return (
+                      <button key={h.inicio} type="button" className="slot slot-minha" disabled aria-label={`${formatarHora(h.inicio)}, sua reserva`}>
+                        <span className="slot-hora">{formatarHora(h.inicio)}</span>
+                        <span className="slot-nota">sua reserva</span>
+                      </button>
+                    )
+                  }
+
+                  if (esgotado) {
+                    return (
+                      <button key={h.inicio} type="button" className="slot slot-esgotado" disabled aria-label={`${formatarHora(h.inicio)}, esgotado`}>
+                        <span className="slot-hora">{formatarHora(h.inicio)}</span>
+                      </button>
+                    )
+                  }
+
+                  return (
+                    <button
+                      key={h.inicio}
+                      type="button"
+                      className={`slot ${ultimaVaga ? 'slot-ultima' : ''}`}
+                      onClick={() => abrirReserva(h)}
+                      aria-label={`${trocarId ? 'Trocar para' : 'Reservar'} ${formatarHora(h.inicio)}${ultimaVaga ? ', última vaga' : ''}`}
+                    >
+                      <span className="slot-hora">{formatarHora(h.inicio)}</span>
+                      {ultimaVaga && <span className="slot-nota">última vaga</span>}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <ul className="legenda-horarios">
+                <li><span className="amostra amostra-livre" />Disponível</li>
+                {minhasReservasEvento.length > 0 && !trocarId && (
+                  <li><span className="amostra amostra-minha" />Sua reserva</li>
+                )}
+                {horariosDoPeriodo.some((h) => h.vagasLivres === 0) && (
+                  <li><span className="amostra amostra-esgotado" />Esgotado</li>
+                )}
+              </ul>
+            </>
           )}
         </>
       )}
