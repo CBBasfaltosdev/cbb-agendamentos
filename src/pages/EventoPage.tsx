@@ -12,6 +12,7 @@ import {
   type Periodo,
   type MinhaReserva,
 } from '../lib/bookingService'
+import { useIsAdmin } from '../contexts/AdminContext'
 
 type Etapa = 'lista' | 'revisao' | 'sucesso'
 
@@ -35,6 +36,7 @@ function formatarDataCompleta(data: string) {
 }
 
 export default function EventoPage() {
+  const isAdmin = useIsAdmin()
   const { slug } = useParams<{ slug: string }>()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -153,7 +155,7 @@ export default function EventoPage() {
   const jaTenhoReservaNoEvento = minhasReservasEvento.length > 0
 
   function abrirReserva(horario: Horario) {
-    if (horario.vagasLivres === 0) return
+    if (isAdmin || horario.vagasLivres === 0) return
     setErroPagina(null)
     setErro(null)
     setHorarioSelecionado(horario)
@@ -168,6 +170,7 @@ export default function EventoPage() {
   }
 
   function abrirCancelamento(reserva: MinhaReserva) {
+    if (isAdmin) return
     setErroPagina(null)
     setErroCancelamento(null)
     setCancelando(reserva)
@@ -245,6 +248,12 @@ export default function EventoPage() {
       {erroPagina && (
         <p className="alerta-pagina erro" role="status" aria-live="polite">
           {erroPagina}
+        </p>
+      )}
+
+      {isAdmin && (
+        <p className="alerta-pagina" style={{ background: 'var(--color-surface-alt)', color: 'var(--color-text-muted)' }}>
+          Conta administrativa — modo monitoramento. Não é possível fazer agendamentos por aqui.
         </p>
       )}
 
@@ -335,8 +344,13 @@ export default function EventoPage() {
                       key={h.inicio}
                       type="button"
                       className={`slot ${ultimaVaga ? 'slot-ultima' : ''}`}
-                      onClick={() => abrirReserva(h)}
-                      aria-label={`${trocarId ? 'Trocar para' : 'Reservar'} ${formatarHora(h.inicio)}${ultimaVaga ? ', última vaga' : ''}`}
+                      disabled={isAdmin}
+                      onClick={isAdmin ? undefined : () => abrirReserva(h)}
+                      aria-label={
+                        isAdmin
+                          ? `${formatarHora(h.inicio)}, livre — modo monitoramento`
+                          : `${trocarId ? 'Trocar para' : 'Reservar'} ${formatarHora(h.inicio)}${ultimaVaga ? ', última vaga' : ''}`
+                      }
                     >
                       <span className="slot-hora">{formatarHora(h.inicio)}</span>
                       {ultimaVaga && <span className="slot-nota">última vaga</span>}

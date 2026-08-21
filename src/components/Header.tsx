@@ -19,9 +19,11 @@ export default function Header({ colaborador, isAdmin }: { colaborador: Colabora
               Painel
             </Link>
           )}
-          <Link to="/meus-agendamentos" className="link-painel">
-            Meus agendamentos
-          </Link>
+          {!isAdmin && (
+            <Link to="/meus-agendamentos" className="link-painel">
+              Meus agendamentos
+            </Link>
+          )}
           <span className="nome-colaborador">{colaborador.nome || colaborador.email}</span>
           <button type="button" className="botao-sair" onClick={() => sair()}>
             Sair

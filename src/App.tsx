@@ -9,6 +9,7 @@ import AdminPage from './pages/AdminPage'
 import MeusAgendamentosPage from './pages/MeusAgendamentosPage'
 import { supabase } from './lib/supabaseClient'
 import { colaboradorAutenticado, aplicarCadastroPendente, souAdmin, type Colaborador } from './lib/bookingService'
+import { AdminProvider } from './contexts/AdminContext'
 import './App.css'
 
 function App() {
@@ -56,17 +57,19 @@ function App() {
   }
 
   return (
-    <BrowserRouter basename="/cbb-agendamentos">
-      <Header colaborador={colaborador} isAdmin={isAdmin} />
-      <main>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/evento/:slug" element={<EventoPage />} />
-          <Route path="/meus-agendamentos" element={<MeusAgendamentosPage />} />
-          <Route path="/admin" element={isAdmin ? <AdminPage /> : <Navigate to="/" replace />} />
-        </Routes>
-      </main>
-    </BrowserRouter>
+    <AdminProvider value={isAdmin}>
+      <BrowserRouter basename="/cbb-agendamentos">
+        <Header colaborador={colaborador} isAdmin={isAdmin} />
+        <main>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/evento/:slug" element={<EventoPage />} />
+            <Route path="/meus-agendamentos" element={<MeusAgendamentosPage />} />
+            <Route path="/admin" element={isAdmin ? <AdminPage /> : <Navigate to="/" replace />} />
+          </Routes>
+        </main>
+      </BrowserRouter>
+    </AdminProvider>
   )
 }
 
