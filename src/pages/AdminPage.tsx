@@ -61,18 +61,30 @@ export default function AdminPage() {
 
   return (
     <div className="pagina-evento">
-      <Link to="/" className="voltar">← Central de Agendamentos</Link>
+      <Link to="/" className="voltar sem-impressao">← Central de Agendamentos</Link>
       <h1>Painel administrativo</h1>
-      <p className="descricao">Todos os agendamentos confirmados, mais recentes primeiro.</p>
+      <p className="descricao sem-impressao">Todos os agendamentos confirmados, mais recentes primeiro.</p>
 
       {carregando && <p className="mensagem">Carregando…</p>}
       {erro && <p className="mensagem erro">{erro}</p>}
 
       {!carregando && !erro && (
         <>
-          <p className="data-evento">{confirmados.length} confirmados</p>
+          <div className="cabecalho-lista sem-impressao">
+            <p className="data-evento">{confirmados.length} confirmados</p>
+            <button type="button" className="botao-secundario" onClick={() => window.print()}>
+              Imprimir lista
+            </button>
+          </div>
 
-          <label className="campo-busca">
+          <p className="data-evento apenas-impressao">
+            {filtrados.length} agendamento{filtrados.length === 1 ? '' : 's'} confirmado
+            {filtrados.length === 1 ? '' : 's'}
+            {filtro.trim() && ` — filtrado por "${filtro.trim()}"`} — lista impressa em{' '}
+            {new Date().toLocaleString('pt-BR')}
+          </p>
+
+          <label className="campo-busca sem-impressao">
             Buscar por nome, e-mail ou setor
             <input value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Buscar…" />
           </label>
@@ -87,7 +99,7 @@ export default function AdminPage() {
                   <th>Evento</th>
                   <th>Data</th>
                   <th>Horário</th>
-                  <th></th>
+                  <th className="sem-impressao"></th>
                 </tr>
               </thead>
               <tbody>
@@ -99,7 +111,7 @@ export default function AdminPage() {
                     <td>{a.eventoNome}</td>
                     <td>{formatarData(a.data)}</td>
                     <td>{formatarHora(a.inicio)}</td>
-                    <td>
+                    <td className="sem-impressao">
                       <button
                         type="button"
                         className="botao-texto-perigo"

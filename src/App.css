@@ -502,6 +502,22 @@
   border-color: var(--color-primary-hover);
 }
 
+.botao-secundario {
+  min-height: 44px;
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-ink);
+}
+
+.botao-secundario:hover:not(:disabled) {
+  background: var(--color-surface-alt);
+}
+
 .botao-texto {
   background: transparent;
   border: none;
@@ -683,6 +699,18 @@
 
 /* ===== Painel admin ===== */
 
+.cabecalho-lista {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.apenas-impressao {
+  display: none;
+}
+
 .campo-busca {
   display: block;
   font-size: 0.875rem;
@@ -745,4 +773,32 @@
   padding: var(--space-6);
   text-align: center;
   color: var(--color-text-muted);
+}
+
+/* ===== Impressão ===== */
+
+@media print {
+  .sem-impressao,
+  .cabecalho,
+  .faixa-marca {
+    display: none !important;
+  }
+
+  .apenas-impressao {
+    display: block;
+  }
+
+  .tabela-scroll {
+    border: none;
+    overflow: visible;
+  }
+
+  .tabela-admin {
+    min-width: 0;
+  }
+
+  .tabela-admin th,
+  .tabela-admin td {
+    white-space: normal;
+  }
 }
