@@ -284,6 +284,30 @@ export async function cancelarAgendamento(id: string): Promise<void> {
   if (error) throw error
 }
 
+// Admin reserva em nome de alguém sem e-mail corporativo (comum na fábrica) — sem conta,
+// sem login, só nome + setor. Não conta para o limite de 1-por-evento: sem e-mail não há
+// identidade confiável para comparar, então é o admin (vendo a grade) quem evita duplicar.
+export async function criarAgendamentoParaFuncionario(params: {
+  nome: string
+  setor: string
+  slotIds: string[]
+}): Promise<{ ok: true } | { ok: false; motivo: 'sem_vaga' | 'erro' }> {
+  for (const slotId of params.slotIds) {
+    const { error } = await supabase.from('agendamentos').insert({
+      slot_id: slotId,
+      colaborador_nome: params.nome.trim(),
+      colaborador_setor: params.setor.trim(),
+      colaborador_email: null,
+      colaborador_id: null,
+    })
+
+    if (!error) return { ok: true }
+    if (error.code !== '23505') return { ok: false, motivo: 'erro' }
+  }
+
+  return { ok: false, motivo: 'sem_vaga' }
+}
+
 // ===== Painel administrativo =====
 
 export async function souAdmin(): Promise<boolean> {
@@ -300,7 +324,8 @@ export async function entrarComoAdmin(email: string, senha: string): Promise<voi
 export type AgendamentoAdmin = {
   id: string
   nome: string
-  email: string
+  email: string | null
+  setor: string | null
   status: 'confirmado' | 'cancelado'
   eventoNome: string
   data: string
@@ -319,10 +344,16 @@ export async function listarTodosAgendamentos(): Promise<AgendamentoAdmin[]> {
     id: a.id,
     nome: a.nome,
     email: a.email,
+    setor: a.setor,
     status: a.status,
     eventoNome: a.evento_nome ?? '—',
     data: a.data ?? '',
     inicio: a.inicio ?? '',
     createdAt: a.created_at,
   }))
+}
+
+export async function cancelarAgendamentoAdmin(id: string): Promise<void> {
+  const { error } = await supabase.rpc('admin_cancelar_agendamento', { p_id: id })
+  if (error) throw error
 }

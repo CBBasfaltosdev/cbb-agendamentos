@@ -152,6 +152,21 @@
   font-weight: 500;
 }
 
+.alerta-admin {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.alerta-admin .botao-texto {
+  flex-shrink: 0;
+  padding: 0;
+  min-height: auto;
+  text-decoration: underline;
+}
+
 .alerta-pagina.erro {
   background: var(--color-error-bg);
   color: var(--color-error);

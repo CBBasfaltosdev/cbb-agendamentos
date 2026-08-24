@@ -7,6 +7,7 @@ import {
   criarAgendamento,
   trocarHorario,
   cancelarAgendamento,
+  criarAgendamentoParaFuncionario,
   type Evento,
   type Horario,
   type Periodo,
@@ -58,6 +59,14 @@ export default function EventoPage() {
   const [cancelando, setCancelando] = useState<MinhaReserva | null>(null)
   const [erroCancelamento, setErroCancelamento] = useState<string | null>(null)
   const [cancelandoEnviando, setCancelandoEnviando] = useState(false)
+
+  // Admin agendando em nome de alguém sem e-mail corporativo (comum na fábrica).
+  const [modoAdminAgendar, setModoAdminAgendar] = useState(false)
+  const [horarioParaFuncionario, setHorarioParaFuncionario] = useState<Horario | null>(null)
+  const [nomeFuncionario, setNomeFuncionario] = useState('')
+  const [setorFuncionario, setSetorFuncionario] = useState('')
+  const [erroAdminAgendar, setErroAdminAgendar] = useState<string | null>(null)
+  const [enviandoAdminAgendar, setEnviandoAdminAgendar] = useState(false)
 
   const tituloModalRef = useRef<HTMLHeadingElement>(null)
 
@@ -191,6 +200,54 @@ export default function EventoPage() {
     }
   }
 
+  function abrirAgendarParaFuncionario(horario: Horario) {
+    if (horario.vagasLivres === 0) return
+    setErroPagina(null)
+    setErroAdminAgendar(null)
+    setNomeFuncionario('')
+    setSetorFuncionario('')
+    setHorarioParaFuncionario(horario)
+  }
+
+  function fecharAgendarParaFuncionario() {
+    setHorarioParaFuncionario(null)
+    setErroAdminAgendar(null)
+  }
+
+  async function confirmarAgendamentoParaFuncionario() {
+    if (!horarioParaFuncionario) return
+    if (!nomeFuncionario.trim() || !setorFuncionario.trim()) {
+      setErroAdminAgendar('Preencha nome completo e setor.')
+      return
+    }
+
+    setErroAdminAgendar(null)
+    setEnviandoAdminAgendar(true)
+    try {
+      const resultado = await criarAgendamentoParaFuncionario({
+        nome: nomeFuncionario,
+        setor: setorFuncionario,
+        slotIds: horarioParaFuncionario.slotIdsLivres,
+      })
+
+      if (!resultado.ok) {
+        if (resultado.motivo === 'sem_vaga') {
+          setErroAdminAgendar('Esse horário acabou de ser preenchido. Feche e escolha outro na grade.')
+        } else {
+          setErroAdminAgendar('Não foi possível concluir. Tente novamente em alguns segundos.')
+        }
+        return
+      }
+
+      setHorarioParaFuncionario(null)
+      await carregar()
+    } catch (e) {
+      setErroAdminAgendar('Não conseguimos falar com o servidor. Verifique sua conexão e tente de novo.')
+    } finally {
+      setEnviandoAdminAgendar(false)
+    }
+  }
+
   async function confirmarReserva() {
     if (!horarioSelecionado) return
     setErro(null)
@@ -252,9 +309,23 @@ export default function EventoPage() {
       )}
 
       {isAdmin && (
-        <p className="alerta-pagina" style={{ background: 'var(--color-surface-alt)', color: 'var(--color-text-muted)' }}>
-          Conta administrativa — modo monitoramento. Não é possível fazer agendamentos por aqui.
-        </p>
+        <div className="alerta-pagina alerta-admin" style={{ background: modoAdminAgendar ? 'var(--color-primary-subtle)' : 'var(--color-surface-alt)', color: modoAdminAgendar ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+          {modoAdminAgendar ? (
+            <>
+              <span>Agendando em nome de um funcionário — toque num horário livre na grade.</span>
+              <button type="button" className="botao-texto" onClick={() => setModoAdminAgendar(false)}>
+                Sair desse modo
+              </button>
+            </>
+          ) : (
+            <>
+              <span>Conta administrativa — modo monitoramento. Não é possível fazer agendamentos por aqui.</span>
+              <button type="button" className="botao-texto" onClick={() => setModoAdminAgendar(true)}>
+                Agendar para um funcionário
+              </button>
+            </>
+          )}
+        </div>
       )}
 
       {trocarId && (
@@ -339,17 +410,27 @@ export default function EventoPage() {
                     )
                   }
 
+                  const bloqueadoParaAdmin = isAdmin && !modoAdminAgendar
+
                   return (
                     <button
                       key={h.inicio}
                       type="button"
                       className={`slot ${ultimaVaga ? 'slot-ultima' : ''}`}
-                      disabled={isAdmin}
-                      onClick={isAdmin ? undefined : () => abrirReserva(h)}
+                      disabled={bloqueadoParaAdmin}
+                      onClick={
+                        bloqueadoParaAdmin
+                          ? undefined
+                          : modoAdminAgendar
+                            ? () => abrirAgendarParaFuncionario(h)
+                            : () => abrirReserva(h)
+                      }
                       aria-label={
-                        isAdmin
+                        bloqueadoParaAdmin
                           ? `${formatarHora(h.inicio)}, livre — modo monitoramento`
-                          : `${trocarId ? 'Trocar para' : 'Reservar'} ${formatarHora(h.inicio)}${ultimaVaga ? ', última vaga' : ''}`
+                          : modoAdminAgendar
+                            ? `Agendar ${formatarHora(h.inicio)} para um funcionário`
+                            : `${trocarId ? 'Trocar para' : 'Reservar'} ${formatarHora(h.inicio)}${ultimaVaga ? ', última vaga' : ''}`
                       }
                     >
                       <span className="slot-hora">{formatarHora(h.inicio)}</span>
@@ -456,6 +537,48 @@ export default function EventoPage() {
                 {cancelandoEnviando ? 'Cancelando…' : 'Cancelar reserva'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {horarioParaFuncionario && (
+        <div
+          className="modal-fundo"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="titulo-modal-admin-agendar"
+          onClick={() => !enviandoAdminAgendar && fecharAgendarParaFuncionario()}
+        >
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <form
+              onSubmit={(ev) => {
+                ev.preventDefault()
+                confirmarAgendamentoParaFuncionario()
+              }}
+            >
+              <p className="passo">Agendar para funcionário</p>
+              <h2 id="titulo-modal-admin-agendar">{formatarHora(horarioParaFuncionario.inicio)}</h2>
+              <p className="descricao">
+                {evento.nome}, {formatarDataCompleta(evento.dataInicio)}
+              </p>
+              <label>
+                Nome completo
+                <input value={nomeFuncionario} onChange={(e) => setNomeFuncionario(e.target.value)} autoFocus />
+              </label>
+              <label>
+                Setor
+                <input value={setorFuncionario} onChange={(e) => setSetorFuncionario(e.target.value)} />
+              </label>
+              {erroAdminAgendar && <p className="mensagem erro">{erroAdminAgendar}</p>}
+              <div className="acoes-modal">
+                <button type="button" className="botao-texto" onClick={fecharAgendarParaFuncionario} disabled={enviandoAdminAgendar}>
+                  Cancelar
+                </button>
+                <button type="submit" className="botao-primario" disabled={enviandoAdminAgendar}>
+                  {enviandoAdminAgendar ? 'Agendando…' : 'Confirmar agendamento'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
