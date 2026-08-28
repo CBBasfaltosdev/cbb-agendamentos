@@ -127,7 +127,7 @@ export function emailValido(email: string): boolean {
 // O plano gratuito do Supabase não permite personalizar o e-mail para mostrar um código —
 // só o link padrão "Confirm email address" funciona sem custo. Por isso o login é por link:
 // o colaborador clica no e-mail e volta autenticado, em vez de digitar um código.
-const SITE_URL = 'https://cbbasfaltosdev.github.io/cbb-agendamentos/'
+const SITE_URL = 'https://devcbbasfaltos.github.io/cbb-agendamentos/'
 const CHAVE_CADASTRO_PENDENTE = 'cbb_cadastro_pendente'
 
 export async function iniciarLogin(dados: { nome: string; email: string }): Promise<void> {
