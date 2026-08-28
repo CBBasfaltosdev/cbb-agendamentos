@@ -15,6 +15,7 @@ import './App.css'
 function App() {
   const [colaborador, setColaborador] = useState<Colaborador | null | undefined>(undefined)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [avisoLogin, setAvisoLogin] = useState<string | null>(null)
 
   // Supabase dispara onAuthStateChange várias vezes (INITIAL_SESSION, TOKEN_REFRESHED, sign
   // in/out) — se duas chamadas ficarem em voo ao mesmo tempo, só a mais recente pode aplicar
@@ -37,6 +38,21 @@ function App() {
   }
 
   useEffect(() => {
+    // O Supabase redireciona de volta com #error=... quando o link do e-mail já expirou
+    // ou já foi usado (ele é de uso único). Sem isso, a pessoa só vê o login de novo, sem
+    // entender por quê.
+    const hash = window.location.hash
+    if (hash.includes('error=')) {
+      const params = new URLSearchParams(hash.slice(1))
+      const codigo = params.get('error_code')
+      setAvisoLogin(
+        codigo === 'otp_expired'
+          ? 'O link de acesso expirou ou já tinha sido usado. Preencha os dados de novo para receber um link novo.'
+          : 'Não foi possível confirmar o acesso por esse link. Preencha os dados de novo para receber um link novo.'
+      )
+      window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    }
+
     atualizarSessao()
     const { data: assinatura } = supabase.auth.onAuthStateChange(() => {
       atualizarSessao()
@@ -49,7 +65,7 @@ function App() {
   }
 
   if (!colaborador) {
-    return <LoginPage />
+    return <LoginPage avisoInicial={avisoLogin} />
   }
 
   if (!colaborador.nome) {

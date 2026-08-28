@@ -4,7 +4,7 @@ import logo from '../assets/logo-cbb.png'
 
 type Modo = 'colaborador' | 'admin'
 
-export default function LoginPage() {
+export default function LoginPage({ avisoInicial }: { avisoInicial?: string | null }) {
   const [modo, setModo] = useState<Modo>('colaborador')
 
   const [nome, setNome] = useState('')
@@ -72,6 +72,7 @@ export default function LoginPage() {
             <p className="subtitulo">
               Use seu nome e e-mail corporativo para acessar os agendamentos.
             </p>
+            {avisoInicial && <p className="mensagem erro">{avisoInicial}</p>}
             <label>
               Nome completo
               <input value={nome} onChange={(e) => setNome(e.target.value)} autoFocus />
